@@ -30,6 +30,12 @@
   #boot-msg{font-size:11px;color:var(--dim);letter-spacing:.12em;min-height:14px}
   #boot-msg.err{color:var(--hot)}
 
+  #toast{position:fixed;top:18px;left:50%;transform:translateX(-50%);z-index:55;
+    background:var(--panel);border:1px solid var(--hot);color:var(--hot);
+    font-size:10px;letter-spacing:.12em;padding:8px 14px;opacity:0;transition:opacity .3s;
+    pointer-events:none;white-space:nowrap}
+  #toast.show{opacity:1}
+
   #hud{position:fixed;inset:0;z-index:10;pointer-events:none}
   .panel{position:absolute;background:var(--panel);border:1px solid var(--line);padding:12px 14px}
   .p-title{top:18px;left:18px}
@@ -73,7 +79,6 @@
   .p-keys .row{display:flex;justify-content:space-between;gap:18px}
   .p-keys .row span:last-child{color:var(--ink)}
 
-  /* ---------- overlays (menu + editor) ---------- */
   #menu{position:fixed;inset:0;z-index:50;display:none;align-items:center;justify-content:center;
     background:rgba(10,9,8,.55)}
   #menu.open{display:flex}
@@ -100,7 +105,6 @@
     border:1px solid var(--line);color:var(--ink);cursor:pointer}
   .mbtn:hover{border-color:var(--accent);color:var(--accent)}
   .mbtn.warn:hover{border-color:var(--hot);color:var(--hot)}
-  .mbtn[disabled]{opacity:.35;pointer-events:none}
   .m-btnrow{display:flex;gap:8px;margin-top:8px}
   .sw{cursor:pointer;display:inline-flex}
   .sw input{display:none}
@@ -113,7 +117,6 @@
   .wide{width:100%}
   .dim{color:var(--dim)}
 
-  /* ---------- editor ---------- */
   #editor{position:fixed;inset:0;z-index:45;display:none;pointer-events:none}
   #editor.open{display:block}
   .e-panel{position:absolute;top:18px;right:18px;width:302px;max-height:94vh;overflow:auto;
@@ -122,7 +125,7 @@
   .e-btnrow .pbtn{flex:1;padding:7px 2px}
   .e-axis{display:flex;align-items:center;gap:6px;margin:4px 0;font-size:10px}
   .e-axis .ax{width:14px;color:var(--dim)}
-  .ebtn{font-family:inherit;font-size:9.5px;padding:4px 0;width:40px;background:#191813;
+  .ebtn{font-family:inherit;font-size:9.5px;padding:4px 0;width:44px;background:#191813;
     border:1px solid var(--line);color:var(--ink);cursor:pointer}
   .ebtn:hover{border-color:var(--accent);color:var(--accent)}
   .e-axis input{width:70px;background:#191813;border:1px solid var(--line);color:var(--ink);
@@ -147,6 +150,8 @@
   <div class="boot-bar"></div>
   <div id="boot-msg">carregando módulos…</div>
 </div>
+
+<div id="toast"></div>
 
 <div id="hud">
   <div class="panel p-title">
@@ -213,7 +218,7 @@
         <input type="range" id="m-rays" min="1" max="32" step="1" value="6"></div>
       <div class="row-line"><span>oclusão por raycast <span class="dim">(desligue se algo sumir)</span></span>
         <label class="sw"><input type="checkbox" id="m-occ"><i></i></label></div>
-      <div class="m-note">frustum + distância sempre ativos. o cache guarda a última decisão de visibilidade e restaura sem re-testar.</div>
+      <div class="m-note">frustum + distância sempre ativos. o cache guarda a decisão de visibilidade de objetos fora da tela e restaura sem re-testar.</div>
     </div>
 
     <div class="m-sec">
@@ -316,8 +321,24 @@
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
 
 /* ============================================================
-   [1] BOOT — Rapier + config persistida
+   [0] HELPERS ANTI-NaN — usados em TODA a simulação
+   isF: só aceita number finito. sClamp: clamp que trata NaN.
 ============================================================ */
+const isF = v => typeof v === 'number' && Number.isFinite(v);
+function sClamp(v, lo, hi, def = 0){
+  if (!isF(v)) v = def;
+  return v < lo ? lo : v > hi ? hi : v;
+}
+const numSafe = (v, def) => isF(+v) ? +v : def;
+function numArr(a, n){
+  if (!Array.isArray(a) || a.length < n) return null;
+  const out = [];
+  for (let i = 0; i < n; i++){ const v = +a[i]; if (!isF(v)) return null; out.push(v); }
+  return out;
+}
+// força vetorial só entra no solver se for finita (barreira contra NaN)
+function finVec(v){ return isF(v.x) && isF(v.y) && isF(v.z); }
+
 const bootEl = document.getElementById('boot');
 const bootMsg = document.getElementById('boot-msg');
 let RAPIER;
@@ -331,14 +352,32 @@ try {
   throw err;
 }
 
-const LS_CFG = 'wb6.cfg.v1', LS_STATE = 'wb6.state.v1', LS_CAR = 'wb6.car.v1';
-let cfg = { preset:'potato', lights:true, rays:true, rayCount:6, occ:true, snd:true, vol:70,
-            up:{ on:true, scale:0.5, pix:false } };
-try { const s = localStorage.getItem(LS_CFG); if (s) Object.assign(cfg, JSON.parse(s)); } catch(e){}
-function saveCfg(){ try { localStorage.setItem(LS_CFG, JSON.stringify(cfg)); } catch(e){} }
-
 const clamp = THREE.MathUtils.clamp;
 const UP = new THREE.Vector3(0, 1, 0);
+
+/* ============================================================
+   [1] CONFIG — sanitizada na entrada (chaves v2: descarta
+   saves antigos/corrompidos das versões anteriores)
+============================================================ */
+const LS_CFG = 'wb6.cfg.v2', LS_STATE = 'wb6.state.v2', LS_CAR = 'wb6.car.v2';
+const PRESET_NAMES = ['potato','baixo','medio','alto'];
+const SUSP_NAMES = ['double','single','mac','leaf','x3f'];
+
+let cfg = { preset:'potato', lights:true, rays:true, rayCount:6, occ:true, snd:true, vol:70,
+            up:{ on:true, scale:0.5, pix:false } };
+try {
+  const s = JSON.parse(localStorage.getItem(LS_CFG) || 'null');
+  if (s && typeof s === 'object'){
+    if (PRESET_NAMES.includes(s.preset)) cfg.preset = s.preset;
+    cfg.lights = !!s.lights; cfg.rays = !!s.rays;
+    cfg.rayCount = sClamp(Math.round(numSafe(s.rayCount, 6)), 1, 32, 6);
+    cfg.occ = s.occ !== false; cfg.snd = s.snd !== false;
+    cfg.vol = sClamp(Math.round(numSafe(s.vol, 70)), 0, 100, 70);
+    if (s.up && typeof s.up === 'object')
+      cfg.up = { on: !!s.up.on, scale: sClamp(numSafe(s.up.scale, 0.5), 0.3, 1, 0.5), pix: !!s.up.pix };
+  }
+} catch(e){}
+function saveCfg(){ try { localStorage.setItem(LS_CFG, JSON.stringify(cfg)); } catch(e){} }
 
 /* ============================================================
    [2] RENDERER / CENA / LUZES — baseline POTATO
@@ -386,27 +425,23 @@ function buildEnv(){
 
 /* ============================================================
    [3] CULLING — frustum + distância + oclusão SEGURA + cache
-   Correções do bug: (a) raycast de oclusão só considera os
-   blocos estruturais (filterPredicate), nunca o carro, caixotes
-   ou piso; (b) margem nas bounding spheres; (c) cache: quando
-   um objeto sai da visão a decisão fica guardada e ao voltar é
-   restaurada sem re-teste (TTL 0.5s).
+   Oclusores = apenas os blocos estruturais (predicate).
+   Raycast de oclusão em try/catch; falha = objeto visível.
 ============================================================ */
-const occSet = new Set();               // colliders que podem ocultar (só blocos)
+const occSet = new Set();
 const cullables = [], occludees = [];
 let cullId = 0;
 function regStatic(obj, occludee = false){
   obj.updateMatrixWorld(true);
   const bs = new THREE.Box3().setFromObject(obj).getBoundingSphere(new THREE.Sphere());
   bs.radius += 0.35;
-  const e = { id:cullId++, obj, radius:bs.radius, occludee, body:null, occ:false,
-    votes:0, _fv:true, holdUntil:0, getCenter:v=>v.copy(bs.center) };
+  const e = { obj, radius:bs.radius, occludee, occ:false, votes:0, _fv:true, holdUntil:0,
+    getCenter:v=>v.copy(bs.center), baseVis:null };
   cullables.push(e); if (occludee) occludees.push(e);
 }
 function regDyn(obj, center, radius, occludee = false, baseVis = null){
   const getCenter = typeof center === 'function' ? center : v => v.copy(center).add(obj.position);
-  const e = { id:cullId++, obj, radius, occludee, body:null, occ:false,
-    votes:0, _fv:true, holdUntil:0, getCenter, baseVis };
+  const e = { obj, radius, occludee, occ:false, votes:0, _fv:true, holdUntil:0, getCenter, baseVis };
   cullables.push(e); if (occludee) occludees.push(e);
 }
 
@@ -418,14 +453,18 @@ let statF = 0, statO = 0, statV = 0, cacheHits = 0, occIdx = 0, cullFar = 65, oc
 function testOcclusion(c, now){
   c.getCenter(_co);
   const d = _co.distanceTo(camera.position);
-  if (d < c.radius + 0.8){ c.occ = false; c.votes = 0; return; }
-  _cd.subVectors(_co, camera.position).normalize();
+  if (!isF(d) || d < c.radius + 0.8){ c.occ = false; c.votes = 0; return; }
+  _cd.subVectors(_co, camera.position);
+  if (_cd.lengthSq() < 1e-8){ c.occ = false; c.votes = 0; return; }
+  _cd.divideScalar(d);
   _rayOcc.origin.x = camera.position.x; _rayOcc.origin.y = camera.position.y; _rayOcc.origin.z = camera.position.z;
   _rayOcc.dir.x = _cd.x; _rayOcc.dir.y = _cd.y; _rayOcc.dir.z = _cd.z;
-  const hit = world.castRay(_rayOcc, Math.max(d - c.radius*0.5, 0.1), true,
-    undefined, undefined, undefined, undefined, col => occSet.has(col));
-  if (hit){ c.votes++; if (c.votes >= 2){ c.occ = true; c.holdUntil = now + 0.5; } }
-  else { c.occ = false; c.votes = 0; }
+  try {
+    const hit = world.castRay(_rayOcc, Math.max(d - c.radius*0.5, 0.1), true,
+      undefined, undefined, undefined, undefined, col => occSet.has(col));
+    if (hit && isF(hit.toi)){ c.votes++; if (c.votes >= 2){ c.occ = true; c.holdUntil = now + 0.5; } }
+    else { c.occ = false; c.votes = 0; }
+  } catch(e){ c.occ = false; c.votes = 0; }
 }
 function cullPass(now){
   camera.updateMatrixWorld();
@@ -434,19 +473,16 @@ function cullPass(now){
   statF = 0; statO = 0; cacheHits = 0;
   for (const c of cullables){
     c.getCenter(_cs.center); _cs.radius = c.radius;
-    let fv = true;
-    if (_cs.center.distanceTo(camera.position) - c.radius > cullFar) fv = false;
-    else if (!_frustum.intersectsSphere(_cs)) fv = false;
-    if (!fv){                                     // saiu da visão → guarda no cache
-      if (c._fv) c.holdUntil = now + 0.5;
-      c._fv = false; statF++;
-    } else c._fv = true;
-    if (fv && occOn && now >= c.holdUntil) c.occ = c.occ; // decisão vigente até novo teste
-    if (fv && occOn && now < c.holdUntil) cacheHits++;    // restaurado do cache, sem re-teste
+    const dC = _cs.center.distanceTo(camera.position);
+    let fv = (dC - c.radius <= cullFar) && _frustum.intersectsSphere(_cs);
+    if (fv !== c._fv){
+      if (!fv) c.holdUntil = now + 0.5;   // saiu da visão: decisão fica em cache 0.5s
+      c._fv = fv;
+    }
+    if (!fv) statF++;
+    else if (c.occ) statO++;
+    else if (occOn && now < c.holdUntil) cacheHits++;  // restaurado do cache sem re-teste
     const vis = fv && (!occOn || !c.occ) && (!c.baseVis || c.baseVis());
-    if (!fv) statF--; // já contado acima
-    if (!c._fv) {} // (contagem feita)
-    if (fv && c.occ) statO++;
     if (c.obj.visible !== vis) c.obj.visible = vis;
   }
   statV = cullables.length - statF - statO;
@@ -493,9 +529,8 @@ function addBlock(x,y,z,hx,hy,hz,ax=0){
   const bd = RAPIER.RigidBodyDesc.fixed().setTranslation(x,y,z);
   if (ax) bd.setRotation({x:Math.sin(ax/2),y:0,z:0,w:Math.cos(ax/2)});
   const b = world.createRigidBody(bd);
-  const col = RAPIER.ColliderDesc.cuboid(hx,hy,hz).setFriction(1.0);
-  const c = world.createCollider(col, b);
-  occSet.add(c);                                    // só blocos ocultam
+  const c = world.createCollider(RAPIER.ColliderDesc.cuboid(hx,hy,hz).setFriction(1.0), b);
+  occSet.add(c);
   const m = new THREE.Mesh(new THREE.BoxGeometry(hx*2,hy*2,hz*2), blockMat);
   m.position.set(x,y,z);
   if (ax) m.quaternion.setFromAxisAngle(new THREE.Vector3(1,0,0), ax);
@@ -522,7 +557,7 @@ for (const [x,y,z,s] of crateSpawns){
 }
 
 /* ============================================================
-   [5] FÍSICA DO CHASSI (body criado antes das partes)
+   [5] CHASSI
 ============================================================ */
 const body = world.createRigidBody(RAPIER.RigidBodyDesc.dynamic()
   .setTranslation(0,1.5,0).setLinearDamping(0.04).setAngularDamping(0.5).setCanSleep(false));
@@ -537,9 +572,7 @@ const CFG = {
 const COM_LOCAL = new THREE.Vector3(0,-0.125,0);
 
 /* ============================================================
-   [6] PARTES DO CARRO — dados, geometrias, colliders, editor core
-   Cada parte = mesh visual + collider real (rebuild compound).
-   Cunha = convex hull de 6 pontos. Cilindro = hull elíptico.
+   [6] PARTES DO CARRO — dados sanitizados + colliders seguros
 ============================================================ */
 const bodyMat  = new THREE.MeshStandardMaterial({ color:0xd97a2b, roughness:0.42, metalness:0.08 });
 const steelMat = new THREE.MeshStandardMaterial({ color:0xb9b1a2, roughness:0.30, metalness:0.9 });
@@ -575,7 +608,8 @@ function defaultParts(){
     { t:'box', p:[0,-0.10,-1.70], s:[1.70,0.16,0.14], r:[0,0,0], name:'PARA-CHOQUE T' },
   ];
 }
-let carParts = [];
+let carParts = [], suspType = 'double', x3fHz = 120;
+
 function wedgeGeometry(s){
   const hw=s[0]/2, hh=s[1]/2, hd=s[2]/2;
   const A=[-hw,-hh,hd], B=[hw,-hh,hd], C=[hw,-hh,-hd], D=[-hw,-hh,-hd], E=[-hw,hh,-hd], F=[hw,hh,-hd];
@@ -587,7 +621,7 @@ function wedgeGeometry(s){
 }
 function partGeometry(p){
   if (p.t==='box') return new THREE.BoxGeometry(p.s[0],p.s[1],p.s[2]);
-  if (p.t==='cyl') return new THREE.CylinderGeometry(1,1,1,16); // unit — escala elíptica
+  if (p.t==='cyl') return new THREE.CylinderGeometry(1,1,1,16);
   return wedgeGeometry(p.s);
 }
 function partVolume(p){
@@ -615,23 +649,33 @@ function cylHull(p){
 }
 let partColliders = [], massF = 1;
 function rebuildCarPhysics(){
-  for (const c of partColliders) world.removeCollider(c, false);
+  for (const c of partColliders){ try { world.removeCollider(c, false); } catch(e){} }
   partColliders.length = 0;
   for (const p of carParts){
     let desc = null;
-    if (p.t==='box') desc = RAPIER.ColliderDesc.cuboid(p.s[0]/2, p.s[1]/2, p.s[2]/2);
-    else if (p.t==='cyl') desc = cylHull(p);
-    else desc = wedgeHull(p);
+    try {
+      if (p.t==='box') desc = RAPIER.ColliderDesc.cuboid(p.s[0]/2, p.s[1]/2, p.s[2]/2);
+      else if (p.t==='cyl') desc = cylHull(p);
+      else desc = wedgeHull(p);
+    } catch(e){ desc = null; }
     if (!desc) continue;
     const q = eulerQuat(p.r);
     desc.setTranslation(p.p[0],p.p[1],p.p[2]).setRotation(q)
-        .setMass(clamp(partVolume(p)*220, 6, 500)).setFriction(0.3);
-    partColliders.push(world.createCollider(desc, body));
+        .setMass(sClamp(partVolume(p)*220, 6, 500, 60)).setFriction(0.3);
+    try { partColliders.push(world.createCollider(desc, body)); } catch(e){}
   }
-  if (!partColliders.length)
-    partColliders.push(world.createCollider(
-      RAPIER.ColliderDesc.cuboid(0.3,0.15,0.3).setMass(80).setFriction(0.3), body));
-  massF = clamp((body.mass?.() ?? 760)/760, 0.35, 3);
+  if (!partColliders.length){
+    try {
+      partColliders.push(world.createCollider(
+        RAPIER.ColliderDesc.cuboid(0.82,0.34,1.70).setMass(420).setFriction(0.3), body));
+    } catch(e){}
+  }
+  // massa do compound — validada; fallback 1.0 se a API não responder com número finito
+  let mRaw = NaN;
+  try {
+    mRaw = typeof body.mass === 'function' ? body.mass() : (isF(body.mass) ? body.mass : NaN);
+  } catch(e){}
+  massF = (isF(mRaw) && mRaw > 1) ? sClamp(mRaw/760, 0.35, 3, 1) : 1;
 }
 function createPartMesh(p){
   p.mesh = new THREE.Mesh(partGeometry(p), p.t==='cyl' ? steelMat : bodyMat);
@@ -645,24 +689,38 @@ function createPartMesh(p){
 function loadCar(){
   let data = null;
   try { data = JSON.parse(localStorage.getItem(LS_CAR) || 'null'); } catch(e){}
-  if (data && Array.isArray(data.parts) && data.parts.length){
-    carParts = data.parts.map(p => ({ t:p.t, p:p.p.slice(), s:p.s.slice(), r:p.r.slice(), name:p.name||p.t }));
-    suspType = SUSP[data.susp] ? data.susp : 'double';
-    x3fHz = clamp(+data.x3f || 120, 12, 624);
-  } else carParts = defaultParts();
+  const parts = [];
+  if (data && Array.isArray(data.parts)){
+    for (const p of data.parts){
+      if (!p || !['box','cyl','wedge'].includes(p.t)) continue;
+      const P = numArr(p.p, 3), S = numArr(p.s, 3), R = numArr(p.r, 3);
+      if (!P || !S || !R) continue;                     // qualquer número ruim → peça descartada
+      parts.push({
+        t:p.t, p:P,
+        s:S.map(v=>sClamp(v, 0.04, 8, 0.5)),
+        r:R.map(v=>sClamp(v, -12.566, 12.566, 0)),
+        name:String(p.name||p.t).slice(0,24)
+      });
+      if (parts.length >= 96) break;
+    }
+  }
+  carParts = parts.length ? parts : defaultParts();
+  suspType = (data && SUSP_NAMES.includes(data.susp)) ? data.susp : 'double';
+  x3fHz = sClamp(Math.round(numSafe(data && data.x3f, 120)), 12, 624, 120);
   for (const p of carParts) createPartMesh(p);
   rebuildCarPhysics();
 }
 function saveCar(){
   try {
     localStorage.setItem(LS_CAR, JSON.stringify({
-      parts: carParts.map(p=>({ t:p.t, p:p.p, s:p.s, r:p.r, name:p.name })),
+      parts: carParts.map(p=>({ t:p.t, p:p.p.map(v=>+v.toFixed(4)), s:p.s.map(v=>+v.toFixed(4)),
+                                r:p.r.map(v=>+v.toFixed(4)), name:p.name })),
       susp: suspType, x3f: x3fHz
     }));
   } catch(e){}
 }
 
-// fixtures fixas: vidro, interior, luzes, torres, sensores X3F
+// fixtures fixas
 const glassMesh = new THREE.Mesh(new THREE.CapsuleGeometry(0.52,0.18,8,28), glassCheap);
 glassMesh.position.y = 0.69; chassis.add(glassMesh);
 const rim = new THREE.Mesh(new THREE.TorusGeometry(0.45,0.035,10,40), darkMat);
@@ -703,7 +761,6 @@ for (const sx of [1,-1]) for (const z of [1.20,-1.10]){
   t.position.set(sx*0.86,0.06,z+0.05);
   towers.push(t);
 }
-// pods de sensor X3F (2 na frente do carro; 1 por roda criado no rebuild da suspensão)
 const x3fCarPods = [];
 for (const s of [1,-1]){
   const pod = new THREE.Mesh(new THREE.CylinderGeometry(0.045,0.045,0.12,10), darkMat);
@@ -752,7 +809,6 @@ function orientSpring(g, a, b){
   g.quaternion.setFromUnitVectors(UP, _sb);
   g.scale.set(1, len, 1);
 }
-let suspType = 'double', x3fHz = 120;
 const SUSP = {
   double:{ k:1.00, c:1.00, comp:1.00 },
   single:{ k:1.05, c:1.00, comp:1.00 },
@@ -783,7 +839,7 @@ function buildWheel(x, z, front, sx){
     x, z, front, sx, hardLocal:new THREE.Vector3(x,CFG.hardY,z),
     steer:0, spin:0, spinVel:0, comp:0, load:0, len:CFG.rest, hits:0, grounded:false,
     normal:new THREE.Vector3(0,1,0), distV:0.70, distVSm:0.70, macFeed:0, x3fFeed:0,
-    rayDbg:[], v:{type:suspType}, frame, steerG, spinG, susG
+    rayDbg:[], v:{ type:'double' }, frame, steerG, spinG, susG
   };
 }
 const wheels = [
@@ -825,7 +881,7 @@ function rebuildSuspensionVisuals(){
       v.spring = new THREE.Mesh(springGeo, springMat); v.springG.add(v.spring);
       v.damper = new THREE.Mesh(cylGeo, darkMat); w.susG.add(v.damper);
       v.top = new THREE.Vector3(sx*0.62, 0.42, z+0.02);
-    } else { // leaf
+    } else {
       const leafG = new THREE.Group(); leafG.position.set(w.x,-0.02,w.z); w.susG.add(leafG);
       [0.98,0.78,0.58,0.38].forEach((L,i)=>{
         const b = new THREE.Mesh(box(0.09,0.032,L), armMat);
@@ -876,14 +932,14 @@ lookLines.frustumCulled = false; scene.add(lookLines);
 
 let RAY_OFFSETS = [{x:0,z:0}];
 function setRayCount(n){
-  n = clamp(n|0, 1, MAXR);
+  n = sClamp(Math.round(numSafe(n, 6)), 1, MAXR, 6);
   const offs = [{x:0,z:0}];
   const rings = [[0.11,5],[0.20,8],[0.27,MAXR]];
   let ri = 0;
   while (offs.length < n){
     const [rad,cap] = rings[Math.min(ri,rings.length-1)]; ri++;
-    const cnt = Math.min(cap, n-offs.length);
-    for (let i=0;i<cnt;i++){
+    const cnt = Math.max(1, Math.min(cap, n-offs.length));
+    for (let i=0;i<cnt && offs.length<n;i++){
       const a = (i + (ri%2)*0.5)/cnt*Math.PI*2 + 0.6;
       offs.push({ x:Math.cos(a)*rad, z:Math.sin(a)*rad });
     }
@@ -894,11 +950,10 @@ function setRayCount(n){
 }
 
 /* ============================================================
-   [9] ÁUDIO — engine.wav (carrega o arquivo se existir na
-   mesma pasta; senão sintetiza um PCM16 localmente)
+   [9] ÁUDIO — engine.wav
 ============================================================ */
 let AC = null, masterGain = null, engineSrc = null, engineFilter = null, engineGain = null;
-let wavNote = 'gerando…', wavBytes = 0, rpmSm = 900, audioAsked = false;
+let wavNote = 'gerando…', rpmSm = 900, audioAsked = false;
 function buildEngineWav(){
   const SR = 22050, N = SR, f0 = 32;
   const raw = new Float32Array(N);
@@ -918,7 +973,7 @@ function buildEngineWav(){
   dv.setUint32(16,16,true); dv.setUint16(20,1,true); dv.setUint16(22,1,true);
   dv.setUint32(24,SR,true); dv.setUint32(28,SR*2,true); dv.setUint16(32,2,true); dv.setUint16(34,16,true);
   ws(36,'data'); dv.setUint32(40,N*2,true);
-  for (let i=0;i<N;i++){ const s = clamp(raw[i]*0.6,-1,1); dv.setInt16(44+i*2, s*32767, true); }
+  for (let i=0;i<N;i++){ const s = clamp(raw[i],-1,1)*0.6; dv.setInt16(44+i*2, s*32767, true); }
   return buf;
 }
 let engineBufPromise = null;
@@ -926,53 +981,61 @@ function getEngineBuffer(){
   if (engineBufPromise) return engineBufPromise;
   engineBufPromise = (async ()=>{
     try {
-      const r = await fetch('engine.wav', { cache:'no-store' });  // seu arquivo, se existir
+      const r = await fetch('engine.wav', { cache:'no-store' });
       if (!r.ok) throw 0;
       const ab = await r.arrayBuffer();
       if (ab.byteLength <= 44) throw 0;
-      wavBytes = ab.byteLength;
-      wavNote = `engine.wav externo · <b>${wavBytes} bytes</b> (arquivo na pasta do HTML)`;
+      wavNote = `engine.wav externo · <b>${ab.byteLength} bytes</b> (arquivo na pasta do HTML)`;
       return await AC.decodeAudioData(ab);
     } catch(e){
       const ab = buildEngineWav();
-      wavBytes = ab.byteLength;
-      wavNote = `engine.wav sintetizado · PCM16 · 22 050 Hz · loop 1,0 s · <b>${wavBytes} bytes</b> gerados localmente`;
+      wavNote = `engine.wav sintetizado · PCM16 · 22 050 Hz · loop 1,0 s · <b>${ab.byteLength} bytes</b>`;
       return await AC.decodeAudioData(ab);
     }
   })();
   return engineBufPromise;
 }
 function ensureAudio(){
-  if (audioAsked){ if (AC && AC.state === 'suspended') AC.resume(); return; }
-  audioAsked = true;
-  AC = new (window.AudioContext || window.webkitAudioContext)();
-  masterGain = AC.createGain();
-  masterGain.gain.value = cfg.snd ? cfg.vol/100 : 0;
-  masterGain.connect(AC.destination);
-  getEngineBuffer().then(buf=>{
-    engineSrc = AC.createBufferSource();
-    engineSrc.buffer = buf; engineSrc.loop = true;
-    engineFilter = AC.createBiquadFilter(); engineFilter.type = 'lowpass';
-    engineFilter.frequency.value = 700; engineFilter.Q.value = 0.8;
-    engineGain = AC.createGain(); engineGain.gain.value = 0;
-    engineSrc.connect(engineFilter); engineFilter.connect(engineGain); engineGain.connect(masterGain);
-    engineSrc.start();
-  }).catch(()=>{});
+  if (audioAsked){ if (AC && AC.state === 'suspended') AC.resume().catch(()=>{}); return; }
+  try {
+    audioAsked = true;
+    AC = new (window.AudioContext || window.webkitAudioContext)();
+    masterGain = AC.createGain();
+    masterGain.gain.value = cfg.snd ? cfg.vol/100 : 0;
+    masterGain.connect(AC.destination);
+    getEngineBuffer().then(buf=>{
+      engineSrc = AC.createBufferSource();
+      engineSrc.buffer = buf; engineSrc.loop = true;
+      engineFilter = AC.createBiquadFilter(); engineFilter.type = 'lowpass';
+      engineFilter.frequency.value = 700; engineFilter.Q.value = 0.8;
+      engineGain = AC.createGain(); engineGain.gain.value = 0;
+      engineSrc.connect(engineFilter); engineFilter.connect(engineGain); engineGain.connect(masterGain);
+      engineSrc.start();
+    }).catch(()=>{});
+  } catch(e){}
 }
 function updateAudio(dt, throttle, spd){
-  if (!AC) return;
-  const rpm = clamp(900 + spd*90 + Math.max(throttle,0)*(1400+spd*30), 850, 6800);
-  rpmSm += (rpm - rpmSm)*Math.min(6*dt, 1);
-  if (engineSrc){
-    engineSrc.playbackRate.value = clamp(rpmSm/60*2/32, 0.5, 8);
-    engineFilter.frequency.value = 350 + rpmSm*0.28 + Math.max(throttle,0)*1800;
-    engineGain.gain.value = 0.10 + Math.max(throttle,0)*0.18 + Math.min(spd*0.004, 0.08);
-  }
+  if (!AC || !engineSrc) return;
+  const rpm = sClamp(900 + spd*90 + Math.max(throttle,0)*(1400+spd*30), 850, 6800, 900);
+  rpmSm += (rpm - rpmSm)*sClamp(6*dt, 0, 1, 0);
+  if (!isF(rpmSm)) rpmSm = 900;
+  engineSrc.playbackRate.value = sClamp(rpmSm/60*2/32, 0.5, 8, 1);
+  engineFilter.frequency.value = sClamp(350 + rpmSm*0.28 + Math.max(throttle,0)*1800, 100, 12000, 700);
+  engineGain.gain.value = sClamp(0.10 + Math.max(throttle,0)*0.18 + Math.min(spd*0.004, 0.08), 0, 0.5, 0.1);
 }
 
 /* ============================================================
-   [10] ENTRADA + MENU P + EDITOR
+   [10] TOAST / ENTRADA / MENU P / EDITOR
 ============================================================ */
+const toastEl = document.getElementById('toast');
+let toastT = 0;
+function toast(msg){
+  toastEl.textContent = msg;
+  toastEl.classList.add('show');
+  clearTimeout(toastT);
+  toastT = setTimeout(()=>toastEl.classList.remove('show'), 2600);
+}
+
 const PRESETS = {
   potato:{ scale:0.50, fogNear:6,  fogFar:55,  env:false, shadows:false, shadowRes:1024, headlights:false, glass:'cheap',    tone:false, aniso:1, sun:1.5, hemi:1.05 },
   baixo: { scale:0.65, fogNear:10, fogFar:85,  env:false, shadows:false, shadowRes:1024, headlights:false, glass:'cheap',    tone:false, aniso:2, sun:1.7, hemi:0.95 },
@@ -986,7 +1049,7 @@ const PDESC = {
   alto:'100% res · sombras 2048 · reflexos · tone mapping ACES'
 };
 let presetName = PRESETS[cfg.preset] ? cfg.preset : 'potato';
-const up = cfg.up && typeof cfg.up.scale === 'number' ? cfg.up : { on:true, scale:0.5, pix:false };
+const up = cfg.up;
 let lightsOn = !!cfg.lights;
 let menuOpen = false, editorOpen = false;
 const menu = document.getElementById('menu');
@@ -995,7 +1058,7 @@ const keys = new Set();
 function paused(){ return menuOpen || editorOpen; }
 
 let rw = 0, rh = 0;
-function effScale(){ return up.on ? clamp(up.scale,0.3,1) : PRESETS[presetName].scale; }
+function effScale(){ return up.on ? sClamp(up.scale, 0.3, 1, 0.5) : PRESETS[presetName].scale; }
 function applyResolution(){
   const s = effScale();
   rw = Math.max(2, Math.round(innerWidth*s));
@@ -1047,13 +1110,29 @@ function toggleRays(){
   raysVisible = !raysVisible; cfg.rays = raysVisible; saveCfg();
   document.getElementById('chip-rays').classList.toggle('on', raysVisible);
 }
+
+/* ---- pose do carro: sempre via setCarPose (quaternion renormalizado) ---- */
+let steerState = 0;
+function setCarPose(px,py,pz, qx,qy,qz,qw){
+  const ql = Math.hypot(qx,qy,qz,qw) || 1;
+  body.setTranslation({ x:px, y:py, z:pz }, true);
+  body.setRotation({ x:qx/ql, y:qy/ql, z:qz/ql, w:qw/ql }, true);
+  body.setLinvel({ x:0, y:0, z:0 }, true);
+  body.setAngvel({ x:0, y:0, z:0 }, true);
+}
 function resetCar(){
-  body.setTranslation({x:0,y:1.5,z:0}, true);
-  body.setRotation({x:0,y:0,z:0,w:1}, true);
-  body.setLinvel({x:0,y:0,z:0}, true);
-  body.setAngvel({x:0,y:0,z:0}, true);
+  setCarPose(0,1.6,0, 0,0,0,1);
   steerState = 0;
   camPos.set(0,3.4,-9);
+}
+let nanResets = 0;
+function hardResetCar(){
+  setCarPose(0,1.6,0, 0,0,0,1);
+  steerState = 0;
+  for (const w of wheels){ w.macFeed = 0; w.x3fFeed = 0; w.distVSm = 0.70; w.distV = 0.70; w.comp = 0; w.load = 0; w.spinVel = 0; }
+  camPos.set(0,3.4,-9);
+  nanResets++;
+  toast('ESTADO FÍSICO INVÁLIDO — CARRO REPOSICIONADO');
 }
 function resetWorld(){
   resetCar();
@@ -1069,6 +1148,7 @@ function setMenu(open){
   menuOpen = open;
   menu.classList.toggle('open', open);
   if (open){ keys.clear(); updateMenuUI(); }
+  else if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
 }
 function setEditor(open){
   editorOpen = open;
@@ -1077,7 +1157,7 @@ function setEditor(open){
   else { deselectPart(); rebuildCarPhysics(); saveCar(); }
 }
 
-// ---- editor: estado ----
+// ---- editor ----
 let selPart = null, selHelper = null;
 const raycaster = new THREE.Raycaster();
 function selectPart(p){
@@ -1100,6 +1180,7 @@ function refreshPartGeometry(p){
 function applyEdit(rebuild = true){
   if (!selPart) return;
   const p = selPart;
+  for (let i=0;i<3;i++){ p.p[i] = sClamp(p.p[i], -20, 20, 0); p.s[i] = sClamp(p.s[i], 0.04, 8, 0.5); p.r[i] = sClamp(p.r[i], -12.566, 12.566, 0); }
   p.mesh.position.set(p.p[0],p.p[1],p.p[2]);
   p.mesh.rotation.set(p.r[0],p.r[1],p.r[2]);
   if (selHelper) selHelper.update();
@@ -1133,7 +1214,6 @@ function restoreDefaultCar(){
   rebuildCarPhysics(); saveCar();
   updateEditorUI();
 }
-// seleção por clique (só no editor, com pouca movimentação do mouse)
 let downX = 0, downY = 0;
 renderer.domElement.addEventListener('pointerdown', e=>{ downX = e.clientX; downY = e.clientY; });
 renderer.domElement.addEventListener('pointerup', e=>{
@@ -1146,7 +1226,6 @@ renderer.domElement.addEventListener('pointerup', e=>{
   if (hits.length) selectPart(hits[0].object.userData.part);
   else deselectPart();
 });
-// bindings do editor
 function bindEditorUI(){
   const $ = id => document.getElementById(id);
   $('e-close').addEventListener('click', ()=>setEditor(false));
@@ -1162,17 +1241,25 @@ function bindEditorUI(){
     b.addEventListener('click', ()=>{ if (!selPart) return;
       selPart.r[+b.dataset.rot] += (+b.dataset.d)*Math.PI/12; applyEdit(); });
   for (const [id,idx] of [['e-px',0],['e-py',1],['e-pz',2]])
-    $(id).addEventListener('change', e=>{ if (!selPart) return;
-      selPart.p[idx] = parseFloat(e.target.value)||0; applyEdit(); });
+    $(id).addEventListener('change', e=>{
+      if (!selPart) return;
+      const v = parseFloat(e.target.value);
+      if (isF(v)) selPart.p[idx] = v;   // campo vazio/inválido mantém o valor anterior
+      applyEdit();
+    });
   for (const [id,idx] of [['e-sw',0],['e-sh',1],['e-sd',2]])
-    $(id).addEventListener('change', e=>{ if (!selPart) return;
-      selPart.s[idx] = clamp(parseFloat(e.target.value)||0.1, 0.04, 8); applyEdit(); });
+    $(id).addEventListener('change', e=>{
+      if (!selPart) return;
+      const v = parseFloat(e.target.value);
+      if (isF(v)) selPart.s[idx] = v;
+      applyEdit();
+    });
   $('e-susp').addEventListener('change', e=>{
-    suspType = e.target.value;
+    suspType = SUSP_NAMES.includes(e.target.value) ? e.target.value : 'double';
     rebuildSuspensionVisuals(); saveCar(); updateSuspSub(); updateEditorUI();
   });
   $('e-x3frange').addEventListener('input', e=>{
-    x3fHz = +e.target.value;
+    x3fHz = sClamp(Math.round(+e.target.value), 12, 624, 120);
     $('e-x3fhz').textContent = x3fHz + ' Hz';
     saveCar();
   });
@@ -1202,10 +1289,9 @@ function updateSuspSub(){
   const n = RAY_OFFSETS.length;
   const names = { double:'DOUBLE WISHBONE', single:'SINGLE WISHBONE', mac:'MACPHERSON',
                   leaf:'LEAF SPRING', x3f:'X3F SPRING '+x3fHz+'HZ' };
-  document.getElementById('sub-susp').textContent = `${names[suspType]} · ${n} RAY${n>1?'S':''} · RAPIER`;
+  document.getElementById('sub-susp').textContent = `${names[suspType] || 'DOUBLE WISHBONE'} · ${n} RAY${n>1?'S':''} · RAPIER`;
 }
 
-// ---- menu P bindings ----
 function updateMenuUI(){
   const $ = id => document.getElementById(id);
   document.querySelectorAll('.pbtn[data-preset]').forEach(b=>
@@ -1240,7 +1326,8 @@ function updateMenuStats(){
   document.getElementById('m-stats').innerHTML =
     `FPS <b>${fpsEMA|0}</b> · DRAWS <b>${lastCalls}</b> · TRIS <b>${fmtK(lastTris)}</b><br>` +
     `VISÍVEIS <b>${statV}/${cullables.length}</b> · FRUSTUM <b>${statF}</b> · OCLUSÃO <b>${statO}</b> · CACHE <b>${cacheHits}</b><br>` +
-    `RESOLUÇÃO <b>${rw}×${rh}</b> → ${innerWidth}×${innerHeight} (${Math.round(effScale()*100)}%)`;
+    `RESOLUÇÃO <b>${rw}×${rh}</b> → ${innerWidth}×${innerHeight} (${Math.round(effScale()*100)}%)<br>` +
+    `RESYNCS FÍSICOS <b>${nanResets}</b>`;
 }
 function bindMenuUI(){
   const $ = id => document.getElementById(id);
@@ -1249,7 +1336,7 @@ function bindMenuUI(){
   document.querySelectorAll('.pbtn[data-preset]').forEach(b=>
     b.addEventListener('click', ()=>applyPreset(b.dataset.preset)));
   $('up-on').addEventListener('change', e=>{ up.on = e.target.checked; cfg.up = up; saveCfg(); applyResolution(); updateMenuUI(); });
-  $('up-scale').addEventListener('input', e=>{ up.scale = e.target.value/100; cfg.up = up; saveCfg(); applyResolution(); updateMenuUI(); });
+  $('up-scale').addEventListener('input', e=>{ up.scale = sClamp(+e.target.value/100, 0.3, 1, 0.5); cfg.up = up; saveCfg(); applyResolution(); updateMenuUI(); });
   $('up-pix').addEventListener('change', e=>{ up.pix = e.target.checked; cfg.up = up; saveCfg(); applyResolution(); });
   $('m-rays').addEventListener('input', e=>{
     setRayCount(+e.target.value);
@@ -1258,14 +1345,14 @@ function bindMenuUI(){
   });
   $('m-occ').addEventListener('change', e=>{
     occOn = e.target.checked; cfg.occ = occOn; saveCfg();
-    if (!occOn) for (const c of cullables) c.occ = false;
+    if (!occOn) for (const c of cullables){ c.occ = false; c.votes = 0; }
   });
   $('m-snd').addEventListener('change', e=>{
     cfg.snd = e.target.checked; saveCfg();
     if (masterGain) masterGain.gain.value = cfg.snd ? cfg.vol/100 : 0;
   });
   $('m-vol').addEventListener('input', e=>{
-    cfg.vol = +e.target.value; saveCfg();
+    cfg.vol = sClamp(Math.round(+e.target.value), 0, 100, 70); saveCfg();
     $('m-volp').textContent = cfg.vol+'%';
     if (masterGain) masterGain.gain.value = cfg.snd ? cfg.vol/100 : 0;
   });
@@ -1277,7 +1364,7 @@ function bindMenuUI(){
   });
 }
 
-// teclado
+const keysDown = e=>keys.add(e.code);
 addEventListener('keydown', e=>{
   const tag = (e.target && e.target.tagName) || '';
   if (tag==='INPUT' || tag==='SELECT' || tag==='TEXTAREA') return;
@@ -1292,7 +1379,7 @@ addEventListener('keydown', e=>{
     return;
   }
   if (['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code)) e.preventDefault();
-  keys.add(e.code);
+  keysDown(e);
   if (e.code==='KeyP') setMenu(true);
   else if (e.code==='KeyE') setEditor(true);
   else if (e.code==='KeyL') toggleLights();
@@ -1301,7 +1388,6 @@ addEventListener('keydown', e=>{
 });
 addEventListener('keyup', e=>keys.delete(e.code));
 
-// câmera orbital
 let camOrbit = 0, camPitch = 0.30, camDist = 8.2, dragging = false, lastPX = 0, lastPY = 0;
 const camPos = new THREE.Vector3(0,3.4,-9);
 renderer.domElement.addEventListener('pointerdown', e=>{
@@ -1312,55 +1398,69 @@ addEventListener('pointerup', ()=>dragging = false);
 addEventListener('pointermove', e=>{
   if (!dragging) return;
   camOrbit -= (e.clientX-lastPX)*0.005;
-  camPitch = clamp(camPitch+(e.clientY-lastPY)*0.004, 0.08, 1.15);
+  camPitch = sClamp(camPitch+(e.clientY-lastPY)*0.004, 0.08, 1.15, 0.3);
   lastPX = e.clientX; lastPY = e.clientY;
 });
-addEventListener('wheel', e=>{ camDist = clamp(camDist+e.deltaY*0.008, 4.5, 15); });
+addEventListener('wheel', e=>{ camDist = sClamp(camDist+e.deltaY*0.008, 4.5, 15, 8.2); });
 
 /* ============================================================
-   [11] PERSISTÊNCIA DO MUNDO
+   [11] PERSISTÊNCIA — sanitizada na saída E na entrada.
+   Nunca salva NaN; nunca carrega dado inválido.
 ============================================================ */
 let odo = 0, lastSave = 0;
 function saveState(){
   const t = body.translation(), q = body.rotation();
+  // guard: se a física estiver inválida, NÃO grava lixo no disco
+  if (![t.x,t.y,t.z,q.x,q.y,q.z,q.w].every(isF)) return;
+  const cratesOut = [];
+  for (const c of crates){
+    const p = c.body.translation(), r = c.body.rotation();
+    if (![p.x,p.y,p.z,r.x,r.y,r.z,r.w].every(isF)) return;
+    cratesOut.push([+p.x.toFixed(3),+p.y.toFixed(3),+p.z.toFixed(3),
+                    +r.x.toFixed(4),+r.y.toFixed(4),+r.z.toFixed(4),+r.w.toFixed(4)]);
+  }
   try {
-    localStorage.setItem(LS_STATE, JSON.stringify({
-      odo,
-      car:[t.x,t.y,t.z, q.x,q.y,q.z,q.w],
-      crates: crates.map(c=>{
-        const p = c.body.translation(), r = c.body.rotation();
-        return [p.x,p.y,p.z, r.x,r.y,r.z,r.w];
-      })
-    }));
+    localStorage.setItem(LS_STATE, JSON.stringify({ odo:+odo.toFixed(2), car:[t.x,t.y,t.z,q.x,q.y,q.z,q.w], crates:cratesOut }));
     lastSave = performance.now();
   } catch(e){}
 }
 function loadState(){
-  try {
-    const s = localStorage.getItem(LS_STATE);
-    if (!s) return false;
-    const d = JSON.parse(s);
-    if (d.car){
-      body.setTranslation({x:d.car[0],y:d.car[1],z:d.car[2]}, true);
-      body.setRotation({x:d.car[3],y:d.car[4],z:d.car[5],w:d.car[6]}, true);
+  let d = null;
+  try { d = JSON.parse(localStorage.getItem(LS_STATE) || 'null'); } catch(e){}
+  if (!d || typeof d !== 'object') return false;
+  const C = numArr(d.car, 7);
+  let ok = false;
+  if (C){
+    const qw = Math.hypot(C[3],C[4],C[5],C[6]);
+    const inWorld = Math.abs(C[0]) <= 60 && Math.abs(C[2]) <= 60 && C[1] > -5 && C[1] < 40;
+    if (qw > 0.5 && qw < 1.5 && inWorld){        // quaternion unitário-ish + posição plausível
+      setCarPose(C[0],C[1],C[2], C[3],C[4],C[5],C[6]);
+      ok = true;
     }
-    body.setLinvel({x:0,y:0,z:0}, true);
-    body.setAngvel({x:0,y:0,z:0}, true);
-    (d.crates||[]).forEach((c,i)=>{
+  }
+  if (!ok) setCarPose(0,1.5,0, 0,0,0,1);
+  if (Array.isArray(d.crates)){
+    d.crates.forEach((cc,i)=>{
       if (!crates[i]) return;
-      crates[i].body.setTranslation({x:c[0],y:c[1],z:c[2]}, true);
-      crates[i].body.setRotation({x:c[3],y:c[4],z:c[5],w:c[6]}, true);
+      const P = numArr(cc, 7);
+      if (!P) return;
+      const qw = Math.hypot(P[3],P[4],P[5],P[6]);
+      if (qw < 0.5 || qw > 1.5) return;
+      const il = 1/qw;
+      crates[i].body.setTranslation({x:P[0],y:P[1],z:P[2]}, true);
+      crates[i].body.setRotation({x:P[3]*il,y:P[4]*il,z:P[5]*il,w:P[6]*il}, true);
       crates[i].body.setLinvel({x:0,y:0,z:0}, true);
+      crates[i].body.setAngvel({x:0,y:0,z:0}, true);
     });
-    odo = +d.odo || 0;
-    return true;
-  } catch(e){ return false; }
+  }
+  odo = sClamp(numSafe(d.odo, 0), 0, 1e9, 0);
+  return ok;
 }
 addEventListener('beforeunload', ()=>{ saveCfg(); saveState(); saveCar(); });
 document.addEventListener('visibilitychange', ()=>{ if (document.hidden){ saveCfg(); saveState(); saveCar(); } });
 
 /* ============================================================
-   [12] FÍSICA — suspensões (rays 1–32, feed por tipo)
+   [12] FÍSICA — com barreiras anti-NaN em cada força
 ============================================================ */
 const carQ = new THREE.Quaternion();
 const carUp = new THREE.Vector3(), carFwd = new THREE.Vector3(), carRight = new THREE.Vector3();
@@ -1370,8 +1470,13 @@ const _nAcc = new THREE.Vector3(), _f = new THREE.Vector3(), _wc = new THREE.Vec
 const _fw = new THREE.Vector3(), _side = new THREE.Vector3(), _pv = new THREE.Vector3(), _r = new THREE.Vector3();
 const _d = new THREE.Vector3(), _q1 = new THREE.Quaternion();
 const _ray = new RAPIER.Ray({x:0,y:0,z:0},{x:0,y:-1,z:0});
-let steerState = 0, throttle = 0, reverseMode = false, braking = false, handbrake = false;
+let throttle = 0, reverseMode = false, braking = false, handbrake = false;
 
+function bodySane(){
+  const t = body.translation(), q = body.rotation(), lv = body.linvel(), av = body.angvel();
+  return isF(t.x)&&isF(t.y)&&isF(t.z)&&isF(q.x)&&isF(q.y)&&isF(q.z)&&isF(q.w)
+      && isF(lv.x)&&isF(lv.y)&&isF(lv.z)&&isF(av.x)&&isF(av.y)&&isF(av.z);
+}
 function syncBody(){
   const p = body.translation(); carPos.set(p.x,p.y,p.z);
   const q = body.rotation(); carQ.set(q.x,q.y,q.z,q.w);
@@ -1380,16 +1485,27 @@ function syncBody(){
   carRight.set(1,0,0).applyQuaternion(carQ);
   const lv = body.linvel(); linV.set(lv.x,lv.y,lv.z);
   const av = body.angvel(); angV.set(av.x,av.y,av.z);
-  try { const c = body.worldCom; comW.set(c.x,c.y,c.z); }   // COM real do compound editado
-  catch(e){ comW.copy(COM_LOCAL).applyQuaternion(carQ).add(carPos); }
+  // COM real do compound — só usado se a resposta for finita; senão fallback analítico
+  let used = false;
+  try {
+    const c = body.worldCom;
+    if (c && isF(c.x) && isF(c.y) && isF(c.z)){ comW.set(c.x,c.y,c.z); used = true; }
+  } catch(e){}
+  if (!used || !finVec(comW))
+    comW.copy(COM_LOCAL).applyQuaternion(carQ).add(carPos);
 }
 function pointVel(p, out){
   _r.subVectors(p, comW);
   out.copy(angV).cross(_r).add(linV);
 }
+// aplica impulso APENAS se vetor e ponto forem finitos — barreira final
+function safeImpulseAtPoint(imp, pt){
+  if (finVec(imp) && isF(pt.x) && isF(pt.y) && isF(pt.z))
+    body.applyImpulseAtPoint(imp, pt, true);
+}
 
 function suspension(w, dt){
-  const sp = SUSP[suspType];
+  const sp = SUSP[suspType] || SUSP.double;
   _hp.copy(w.hardLocal).applyQuaternion(carQ).add(carPos);
   _down.copy(carUp).multiplyScalar(-1);
   const rayLen = CFG.rest + CFG.maxDrop + CFG.wheelR;
@@ -1400,10 +1516,12 @@ function suspension(w, dt){
     _o.copy(_hp).addScaledVector(carRight, ro.x).addScaledVector(carFwd, ro.z);
     _ray.origin.x=_o.x; _ray.origin.y=_o.y; _ray.origin.z=_o.z;
     _ray.dir.x=_down.x; _ray.dir.y=_down.y; _ray.dir.z=_down.z;
-    const hit = world.castRayAndGetNormal(_ray, rayLen, true, undefined, undefined, undefined, body);
+    let hit = null;
+    try { hit = world.castRayAndGetNormal(_ray, rayLen, true, undefined, undefined, undefined, body); } catch(e){}
     const dbg = w.rayDbg[i];
     dbg.ox=_o.x; dbg.oy=_o.y; dbg.oz=_o.z;
-    if (hit){
+    // hit só conta se toi for finito e >= 0 (NaN/lixo = não-hit)
+    if (hit && isF(hit.toi) && hit.toi >= 0 && isF(hit.normal.x+hit.normal.y+hit.normal.z)){
       const d = Math.max(hit.toi, 0.02);
       sum += rayLen - d; toiSum += d;
       _nAcc.x+=hit.normal.x; _nAcc.y+=hit.normal.y; _nAcc.z+=hit.normal.z;
@@ -1417,20 +1535,23 @@ function suspension(w, dt){
   w.hits = hits; w.grounded = hits > 0;
   if (w.grounded){
     const raw = sum/hits - CFG.maxDrop;
-    const comp = clamp(raw, -CFG.maxDrop, CFG.maxComp*sp.comp);
+    const comp = sClamp(raw, -CFG.maxDrop, CFG.maxComp*sp.comp, 0);
     w.comp = comp; w.len = CFG.rest - comp;
     w.distV = toiSum/hits;
-    w.distVSm += (w.distV - w.distVSm)*Math.min(20*dt, 1);
-    if (_nAcc.lengthSq() < 1e-4) _nAcc.copy(carUp); else _nAcc.normalize();
+    w.distVSm += (w.distV - w.distVSm)*sClamp(20*dt, 0, 1, 0);
+    if (!isF(w.distVSm)) w.distVSm = 0.70;
+    // normal média — sempre normalizada e finita
+    if (_nAcc.lengthSq() < 1e-8 || !finVec(_nAcc)) _nAcc.copy(carUp);
+    else _nAcc.normalize();
     w.normal.copy(_nAcc);
     pointVel(_hp, _pv);
     const vComp = _pv.dot(_down);
     const feed = suspType==='mac' ? w.macFeed : suspType==='x3f' ? w.x3fFeed : 0;
     let F = CFG.k*sp.k*massF*(comp + feed) + CFG.c*sp.c*massF*vComp;
-    F = clamp(F, -CFG.maxPull*massF, CFG.maxPush*massF);
+    F = sClamp(F, -CFG.maxPull*massF, CFG.maxPush*massF, 0);
     w.load = F;
     _f.copy(_nAcc).multiplyScalar(F*dt);
-    body.applyImpulseAtPoint(_f, _hp, true);
+    safeImpulseAtPoint(_f, _hp);
   } else {
     w.comp = 0; w.load = 0; w.len = CFG.rest + CFG.maxDrop; w.normal.copy(carUp);
   }
@@ -1454,19 +1575,19 @@ function tireForces(w, dt, sp){
   const vLat = _pv.dot(_side), vFwd = _pv.dot(_fw);
   let maxLat = (500*massF) + 1.7*Math.max(w.load, 0);
   if (handbrake && !w.front) maxLat *= (suspType==='leaf' ? 0.30 : 0.15);
-  const Fside = clamp(-vLat*CFG.latC, -maxLat, maxLat);
-  let Flong = clamp(-vFwd*40, -CFG.rrMax*massF, CFG.rrMax*massF);
+  const Fside = sClamp(-vLat*CFG.latC, -maxLat, maxLat, 0);
+  let Flong = sClamp(-vFwd*40, -CFG.rrMax*massF, CFG.rrMax*massF, 0);
   if (braking){
     const bmax = CFG.brakeMax*massF*(w.front ? 1 : (handbrake ? 2.2 : 1.15));
-    Flong += clamp(-vFwd*CFG.brakeC, -bmax, bmax);
+    Flong += sClamp(-vFwd*CFG.brakeC, -bmax, bmax, 0);
   } else if (reverseMode) Flong += -CFG.driveF*massF*0.6;
   else if (throttle > 0) Flong += CFG.driveF*massF*throttle;
   _f.set(0,0,0).addScaledVector(_side, Fside*dt).addScaledVector(_fw, Flong*dt);
-  body.applyImpulseAtPoint(_f, _wc, true);
-  w.spinVel = vFwd/CFG.wheelR;
+  safeImpulseAtPoint(_f, _wc);
+  w.spinVel = isF(vFwd) ? vFwd/CFG.wheelR : 0;
 }
 
-// MacPherson: ray look-ahead "na visão do carro" — prevê o terreno à frente
+// MacPherson — look-ahead
 const _lo = new THREE.Vector3(), _ld = new THREE.Vector3();
 const lookDbg = wheels.map(()=>({ox:0,oy:0,oz:0,ex:0,ey:0,ez:0}));
 function macLookAhead(dt){
@@ -1476,58 +1597,60 @@ function macLookAhead(dt){
     _ld.copy(carFwd).multiplyScalar(0.85).addScaledVector(carUp, -1).normalize();
     _ray.origin.x=_lo.x; _ray.origin.y=_lo.y; _ray.origin.z=_lo.z;
     _ray.dir.x=_ld.x; _ray.dir.y=_ld.y; _ray.dir.z=_ld.z;
-    const hit = world.castRay(_ray, 2.8, true, undefined, undefined, undefined, body);
+    let hit = null;
+    try { hit = world.castRay(_ray, 2.8, true, undefined, undefined, undefined, body); } catch(e){}
     let target = 0, endD = 2.8;
-    if (hit){
+    if (hit && isF(hit.toi) && hit.toi >= 0){
       endD = Math.max(hit.toi, 0.05);
-      const vert = endD*0.762;                            // proj. vertical do look-ray
-      const delta = vert - w.distVSm;                     // ≈0.6 em piso plano
-      target = clamp((0.6 - delta)*0.9, -0.12, 0.16);
+      const vert = endD*0.762;
+      const delta = vert - w.distVSm;
+      target = sClamp((0.6 - delta)*0.9, -0.12, 0.16, 0);
     }
-    w.macFeed += (target - w.macFeed)*Math.min(12*dt, 1);
+    w.macFeed += (target - w.macFeed)*sClamp(12*dt, 0, 1, 0);
+    if (!isF(w.macFeed)) w.macFeed = 0;
     const dbg = lookDbg[i];
     dbg.ox=_lo.x; dbg.oy=_lo.y; dbg.oz=_lo.z;
     dbg.ex=_lo.x+_ld.x*endD; dbg.ey=_lo.y+_ld.y*endD; dbg.ez=_lo.z+_ld.z*endD;
   }
 }
-// X3F: 2 sensores na frente do carro + 1 na frente de cada suspensão,
-// amostrados na frequência configurada (12–624 Hz), sample-and-hold
+// X3F — sensores com sample-and-hold na frequência configurada
 const sensDbg = Array.from({length:6}, ()=>({ox:0,oy:0,oz:0,ex:0,ey:0,ez:0,hit:false}));
 let x3fAcc = 0;
 function sampleX3F(){
   let gNow = 0, gn = 0;
   for (const w of wheels) for (const d of w.rayDbg)
-    if (d.hit){ gNow += d.ey; gn++; }
-  if (!gn) gNow = carPos.y - 0.8; else gNow /= gn;
+    if (d.hit && isF(d.ey)){ gNow += d.ey; gn++; }
+  gNow = gn ? gNow/gn : carPos.y - 0.8;
   const castDown = (lx, ly, lz, dbg)=>{
     _o.set(lx,ly,lz).applyQuaternion(carQ).add(carPos);
     _ray.origin.x=_o.x; _ray.origin.y=_o.y; _ray.origin.z=_o.z;
     _ray.dir.x=-carUp.x; _ray.dir.y=-carUp.y; _ray.dir.z=-carUp.z;
-    const hit = world.castRay(_ray, 3.0, true, undefined, undefined, undefined, body);
-    const d = hit ? Math.max(hit.toi, 0.02) : 3.0;
+    let hit = null;
+    try { hit = world.castRay(_ray, 3.0, true, undefined, undefined, undefined, body); } catch(e){}
+    const d = (hit && isF(hit.toi) && hit.toi >= 0) ? Math.max(hit.toi, 0.02) : 3.0;
     dbg.ox=_o.x; dbg.oy=_o.y; dbg.oz=_o.z;
     dbg.ex=_o.x-carUp.x*d; dbg.ey=_o.y-carUp.y*d; dbg.ez=_o.z-carUp.z*d;
-    dbg.hit = !!hit;
-    return _o.y - carUp.y*d;   // altura do solo detectada
+    dbg.hit = !!(hit && isF(hit.toi));
+    return _o.y - carUp.y*d;
   };
   const carMean = (castDown(+0.45,-0.15,1.85,sensDbg[0]) + castDown(-0.45,-0.15,1.85,sensDbg[1]))/2;
   for (let i=0;i<4;i++){
     const w = wheels[i];
     const gw = castDown(w.x, -0.10, w.z+0.55, sensDbg[2+i]);
-    const ahead = (carMean + gw)/2;
-    w.x3fFeed = clamp((ahead - gNow)*0.55, -0.12, 0.16);
+    w.x3fFeed = sClamp(((carMean + gw)/2 - gNow)*0.55, -0.12, 0.16, 0);
   }
 }
 
 let totalHits = 0;
 function physicsStep(dt){
+  if (!bodySane()){ hardResetCar(); return; }   // watchdog de entrada
   syncBody();
   handbrake = keys.has('Space');
   throttle = ((keys.has('KeyW')||keys.has('ArrowUp'))?1:0)
            - ((keys.has('KeyS')||keys.has('ArrowDown'))?1:0);
   const steerIn = ((keys.has('KeyA')||keys.has('ArrowLeft'))?1:0)
                 - ((keys.has('KeyD')||keys.has('ArrowRight'))?1:0);
-  const fwdSpeed = linV.dot(carFwd);
+  const fwdSpeed = isF(linV.dot(carFwd)) ? linV.dot(carFwd) : 0;
   reverseMode = throttle < 0 && fwdSpeed < 0.6;
   braking = (throttle<0 && fwdSpeed>0.6) || (throttle>0 && fwdSpeed<-0.6) || handbrake;
   const maxSteer = 0.62 - 0.34*Math.min(Math.abs(fwdSpeed)/24, 1);
@@ -1537,7 +1660,7 @@ function physicsStep(dt){
   if (suspType==='mac') macLookAhead(dt);
   if (suspType==='x3f'){
     x3fAcc += dt;
-    const per = 1/x3fHz;
+    const per = 1/sClamp(x3fHz, 12, 624, 120);
     let n = 0;
     while (x3fAcc >= per && n < 12){ sampleX3F(); x3fAcc -= per; n++; }
     if (n >= 12) x3fAcc = 0;
@@ -1545,13 +1668,15 @@ function physicsStep(dt){
 
   for (const w of wheels) suspension(w, dt);
 
-  const sp = linV.length();
+  const sp = isF(linV.length()) ? linV.length() : 0;
   odo += sp*dt;
   if (sp > 0.01){
     _d.copy(linV).multiplyScalar(-0.9*massF*sp*dt);
-    body.applyImpulse(_d, true);
+    if (finVec(_d)) body.applyImpulse(_d, true);
   }
   world.step();
+  // watchdog de saída: NaN detectado = resync imediato (não propaga, não salva)
+  if (!bodySane()) hardResetCar();
   totalHits = wheels.reduce((a,w)=>a+w.hits, 0);
 }
 
@@ -1585,7 +1710,7 @@ function updateWheelVisual(w, dt){
     placeCyl(v.lR.m, v.lR.p, bjl, 0.026);
     placeCyl(v.damper, v.top, bju, 0.038);
     orientSpring(v.springG, _v4.copy(v.top).lerp(bju,0.38), _v5.copy(v.top).lerp(bju,0.96));
-  } else { // leaf
+  } else {
     v.leafG.rotation.x = -w.comp*1.15;
     placeCyl(v.shock, v.top, _v3.set(w.x, yW+0.06, w.z-0.12), 0.034);
   }
@@ -1597,6 +1722,7 @@ function updateVisuals(dt){
   for (const w of wheels) updateWheelVisual(w, dt);
   for (const c of crates){
     const p = c.body.translation(), q = c.body.rotation();
+    if (![p.x,p.y,p.z,q.x,q.y,q.z,q.w].every(isF)) continue;
     c.mesh.position.set(p.x,p.y,p.z);
     c.mesh.quaternion.set(q.x,q.y,q.z,q.w);
   }
@@ -1649,7 +1775,6 @@ function updateCamera(dt){
   camera.lookAt(carPos.x, carPos.y+1.0, carPos.z);
 }
 
-// HUD
 const telGrid = document.getElementById('tel-grid');
 const telRefs = ['FE','FD','TE','TD'].map(lbl=>{
   const cell = document.createElement('div');
@@ -1667,20 +1792,20 @@ const spdEl = document.getElementById('spd'), gearEl = document.getElementById('
       stCache = document.getElementById('st-cache'), stOdo = document.getElementById('st-odo');
 let lastCalls = 0, lastTris = 0, fpsEMA = 60, stripAcc = 0;
 function updateHUD(dt){
-  const fwdSpeed = linV.dot(carFwd);
-  spdEl.textContent = Math.round(Math.abs(fwdSpeed)*3.6);
+  const fwd = linV.dot(carFwd);
+  spdEl.textContent = isF(fwd) ? Math.round(Math.abs(fwd)*3.6) : 0;
   let gear = 'D';
   if (reverseMode) gear = 'R';
   else if (braking) gear = 'B';
-  else if (Math.abs(fwdSpeed) < 0.5 && throttle===0) gear = 'N';
+  else if (Math.abs(fwd) < 0.5 && throttle===0) gear = 'N';
   gearEl.textContent = gear;
   gearEl.classList.toggle('rev', gear==='R');
   raysInd.textContent = `CONTACTS ${totalHits}/${RAY_OFFSETS.length*4}`;
   wheels.forEach((w,i)=>{
     const t = telRefs[i];
-    t.bar.style.transform = `scaleY(${clamp(w.comp/CFG.maxComp,0,1)})`;
+    t.bar.style.transform = `scaleY(${sClamp(w.comp/CFG.maxComp, 0, 1, 0)})`;
     t.bar.classList.toggle('air', !w.grounded || w.comp<=0);
-    t.load.textContent = (w.load/1000).toFixed(1)+' kN';
+    t.load.textContent = (sClamp(w.load, -1e5, 1e5, 0)/1000).toFixed(1)+' kN';
     t.hits.textContent = w.hits+'/'+RAY_OFFSETS.length;
   });
   stripAcc += dt;
@@ -1700,9 +1825,9 @@ function updateHUD(dt){
 bootMsg.textContent = 'montando carro…';
 loadCar();
 rebuildSuspensionVisuals();
-setRayCount(cfg.rayCount || 6);
+setRayCount(cfg.rayCount);
 bootMsg.textContent = 'restaurando memória salva…';
-const hadState = loadState();
+loadState();
 raysVisible = !!cfg.rays;
 rayLines.visible = rayPoints.visible = raysVisible;
 document.getElementById('chip-rays').classList.toggle('on', raysVisible);
@@ -1716,16 +1841,18 @@ function frame(){
   requestAnimationFrame(frame);
   const now = performance.now()/1000;
   const rawDt = now - last;
-  const dt = Math.min(rawDt, 0.05);
   last = now;
-  if (rawDt > 0) fpsEMA += (1/rawDt - fpsEMA)*0.08;
-  if (!paused()){
+  const dt = isF(rawDt) ? Math.min(rawDt, 0.05) : 0;
+  if (isF(rawDt) && rawDt > 0) fpsEMA += (1/rawDt - fpsEMA)*0.08;
+
+  if (!paused() && dt > 0){
     acc += dt; saveT += dt;
     let steps = 0;
     while (acc >= FIXED && steps < 3){ physicsStep(FIXED); acc -= FIXED; steps++; }
     if (steps === 3) acc = 0;
     if (saveT > 6){ saveT = 0; saveState(); }
   } else acc = 0;
+
   syncBody();
   updateVisuals(dt);
   updateCamera(dt);
