@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WB-6 — Chassi Raycast · Softbody Experimental</title>
+<title>WB-6 — Chassi Raycast · Softbody Seguro + X3F Nodes</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
@@ -165,13 +165,14 @@
   .lr-l{width:22px;font-size:10px;color:var(--dim)}
   .lrk{flex:1;font-size:9px;padding:5px 2px}
   .lrk.cap{border-color:var(--accent);color:var(--accent)}
+  #e-x3fedit.dis{opacity:.35;pointer-events:none}
 </style>
 </head>
 <body>
 
 <div id="boot">
   <div class="boot-title">WB<b>—</b>6</div>
-  <div class="boot-sub">SOFTBODY EXPERIMENTAL · MP · 6 SUSPENSÕES</div>
+  <div class="boot-sub">SOFTBODY SEGURO · X3F NODES · 231 RAYS</div>
   <div class="boot-bar"></div>
   <div id="boot-msg">carregando módulos…</div>
 </div>
@@ -206,9 +207,9 @@
   </div>
   <div class="panel p-keys">
     <div class="row"><span><span class="k">W</span><span class="k">S</span><span class="k">A</span><span class="k">D</span></span><span>dirigir</span></div>
+    <div class="row"><span><span class="k">SHIFT</span></span><span>pular</span></div>
     <div class="row"><span><span class="k">ESPAÇO</span></span><span>freio de mão</span></div>
     <div class="row"><span><span class="k">;</span></span><span>chat (bolha 5s)</span></div>
-    <div class="row"><span><span class="k">T</span><span class="k">Y</span><span class="k">U</span><span class="k">I</span></span><span>low rider abaixa (F/H/J/K sobe)</span></div>
     <div class="row"><span><span class="k">L</span><span class="k">G</span><span class="k">R</span></span><span>faróis · rays · reset</span></div>
     <div class="row"><span><span class="k">P</span><span class="k">E</span></span><span>opções · editor de carro</span></div>
     <div class="row"><span><span class="k">MOUSE</span></span><span>orbitar câmera</span></div>
@@ -249,7 +250,7 @@
       <div class="row-line" style="margin-top:8px;border-top:1px dashed var(--line);padding-top:8px">
         <span id="m-netstatus">desconectado</span>
         <button class="mbtn warn" id="m-leave" disabled>SAIR</button></div>
-      <div class="m-note">o mapa multiplayer tem piso verde, 4 rampas e dois setores de quebra-molas. a suspensão dos outros pilotos é simulada no seu cliente por raycasts locais — ligue o debug (G) e veja as rodas deles trabalhar nos bumps. chat com <b>;</b>.</div>
+      <div class="m-note">a suspensão dos outros pilotos é simulada no seu cliente por raycasts locais — ligue o debug (G). chat com <b>;</b>.</div>
     </div>
 
     <div class="m-sec">
@@ -290,7 +291,7 @@
 
     <div class="m-sec">
       <div class="m-label x">EXPERIMENTAL — SOFTBODY</div>
-      <div class="row-line"><span>habilitar softbody <span class="dim">(desliga sozinho em multiplayer)</span></span>
+      <div class="row-line"><span>habilitar softbody <span class="dim">(desliga em multiplayer)</span></span>
         <label class="sw cy"><input type="checkbox" id="sb-on"><i></i></label></div>
       <div class="row-line"><span>modelo</span>
         <select class="e-select" id="sb-model" style="width:200px">
@@ -301,27 +302,28 @@
         <label class="sw cy"><input type="checkbox" id="sb-vol"><i></i></label></div>
       <div class="row-line"><span>detecção de colisão em camadas (casting rays)</span>
         <label class="sw cy"><input type="checkbox" id="sb-layers"><i></i></label></div>
-      <div class="row-line"><span>quantia de casting rays <b id="sb-raysv">256</b> <span class="dim">(32–5000)</span></span>
-        <input type="number" id="sb-rays" class="tin" min="32" max="5000" step="1" value="256"></div>
+      <div class="row-line"><span>quantia de casting rays <b id="sb-raysv">128</b> <span class="dim">(32–5000)</span></span>
+        <input type="number" id="sb-rays" class="tin" min="32" max="5000" step="1" value="128"></div>
       <div class="row-line"><span>self-collision</span>
         <label class="sw cy"><input type="checkbox" id="sb-self"><i></i></label></div>
       <div class="row-line"><span>resolução de colisão contínua</span>
         <label class="sw cy"><input type="checkbox" id="sb-ccd"><i></i></label></div>
       <div class="row-line"><span>taxa do softbody <span class="dim">(digite 50–10000)</span></span>
         <span style="display:flex;align-items:center;gap:6px">
-          <input type="number" id="sb-hz" class="tin" min="50" max="10000" step="1" value="240">
-          <b id="sb-hzv" style="min-width:44px">240 Hz</b>
+          <input type="number" id="sb-hz" class="tin" min="50" max="10000" step="1" value="120">
+          <b id="sb-hzv" style="min-width:44px">120 Hz</b>
         </span></div>
       <div id="sb-stats" class="m-note"></div>
+      <div class="m-note">proteções: orçamento de 3,5 ms/frame, muro de rays refrescado em lotes, cap de 64 planos por nó, kill-switch de explosão. acima disso a taxa efetiva cai (o contador mostra a real).</div>
     </div>
 
     <div class="m-sec">
       <div class="m-label">FÍSICA — SUSPENSÃO</div>
-      <div class="row-line"><span>raycasts por roda <b id="m-rays-n">6</b> <span class="dim">(1–32)</span></span>
-        <input type="range" id="m-rays" min="1" max="32" step="1" value="6"></div>
+      <div class="row-line"><span>raycasts por roda <b id="m-rays-n">6</b> <span class="dim">(1–231)</span></span>
+        <input type="range" id="m-rays" min="1" max="231" step="1" value="6"></div>
       <div class="row-line"><span>oclusão por raycast <span class="dim">(desligue se algo sumir)</span></span>
         <label class="sw"><input type="checkbox" id="m-occ"><i></i></label></div>
-      <div class="m-note">CCD ativo no carro e caixotes · bump-stop progressivo · spawn validado contra o solo.</div>
+      <div class="m-note">CCD no carro e caixotes · bump-stop progressivo · SHIFT pula.</div>
     </div>
 
     <div class="m-sec">
@@ -335,7 +337,7 @@
 
     <div class="m-sec">
       <div class="m-label">EDITOR DE CARRO</div>
-      <div class="row-line"><span>peças, suspensões, low rider, X3F</span>
+      <div class="row-line"><span>peças, suspensões, X3F nodes</span>
         <button class="mbtn" id="m-editor">ABRIR [E]</button></div>
     </div>
 
@@ -405,13 +407,36 @@
         <option value="single">SINGLE WISHBONE</option>
         <option value="mac">MACPHERSON — pré-vê o terreno (rays na visão do carro)</option>
         <option value="leaf">LEAF SPRING</option>
-        <option value="x3f">X3F SPRING — sensores preditivos</option>
+        <option value="x3f">X3F SPRING — sensores/câmeras + editor</option>
         <option value="lowrider">LOW RIDER — hidráulica por teclas</option>
       </select>
       <div id="e-x3f" style="display:none">
         <div class="row-line"><span>FREQUÊNCIA DE DETECÇÃO <b id="e-x3fhz">120 Hz</b></span></div>
         <input type="range" class="wide" id="e-x3frange" min="12" max="624" step="1" value="120">
-        <div class="m-note">2 sensores na frente do carro + 1 na frente de cada suspensão, olhando para baixo, amostrados nessa taxa (12–624 Hz) com sample-and-hold.</div>
+        <div class="row-line" style="margin-top:6px"><span>braços do X3F</span>
+          <select class="e-select" id="e-x3farm" style="width:180px">
+            <option value="double">DOUBLE WISHBONE</option>
+            <option value="single">SINGLE WISHBONE</option>
+          </select></div>
+
+        <div class="m-label" style="margin-top:8px">EDITOR DE SENSORES — SENSOR (sente o solo) · CÂMERA (vê e prevê)</div>
+        <div class="e-btnrow">
+          <button class="pbtn" id="e-x3f-adds">+ SENSOR</button>
+          <button class="pbtn" id="e-x3f-addc">+ CÂMERA</button>
+          <button class="mbtn" id="e-x3f-clear">LIMPAR</button>
+        </div>
+        <div class="m-note">clique num pod no carro (sensor ciano · câmera âmbar) para selecionar e editar posição · sem nós, o X3F usa os 6 fixos de fábrica</div>
+        <div id="e-x3fedit" class="dis" style="display:none">
+          <div class="row-line"><span id="e-x3fname">—</span>
+            <button class="mbtn warn" id="e-x3f-del" disabled>DELETAR</button></div>
+          <div class="m-label">MOVER (PASSO 0.1)</div>
+          <div class="e-axis"><span class="ax">X</span><button class="ebtn" data-xax="0" data-d="-1">−</button>
+            <input type="number" step="0.1" id="e-x0"><button class="ebtn" data-xax="0" data-d="1">+</button></div>
+          <div class="e-axis"><span class="ax">Y</span><button class="ebtn" data-xax="1" data-d="-1">−</button>
+            <input type="number" step="0.1" id="e-x1"><button class="ebtn" data-xax="1" data-d="1">+</button></div>
+          <div class="e-axis"><span class="ax">Z</span><button class="ebtn" data-xax="2" data-d="-1">−</button>
+            <input type="number" step="0.1" id="e-x2"><button class="ebtn" data-xax="2" data-d="1">+</button></div>
+        </div>
       </div>
       <div id="e-low" style="display:none">
         <div class="m-label" style="margin-top:2px">TECLAS HIDRÁULICAS — SEGURE PARA BOMBEAR</div>
@@ -483,14 +508,14 @@ const SUSP_NAMES = ['double','single','mac','leaf','x3f','lowrider'];
 
 let cfg = { name:'PILOTO', preset:'potato', lights:true, rays:true, rayCount:6, occ:true,
             snd:true, vol:70, up:{ on:true, scale:0.5, pix:false }, proc:{ on:false, seed:'x3f-6' },
-            soft:{ on:false, model:'nodebeam', vol:true, layers:true, rays:256, selfcol:true, ccd:true, hz:240 } };
+            soft:{ on:false, model:'nodebeam', vol:true, layers:true, rays:128, selfcol:true, ccd:true, hz:120 } };
 try {
   const s = JSON.parse(localStorage.getItem(LS_CFG) || 'null');
   if (s && typeof s === 'object'){
     cfg.name = sanitizeName(s.name);
     if (PRESET_NAMES.includes(s.preset)) cfg.preset = s.preset;
     cfg.lights = !!s.lights; cfg.rays = !!s.rays;
-    cfg.rayCount = sClamp(Math.round(numSafe(s.rayCount, 6)), 1, 32, 6);
+    cfg.rayCount = sClamp(Math.round(numSafe(s.rayCount, 6)), 1, 231, 6);
     cfg.occ = s.occ !== false; cfg.snd = s.snd !== false;
     cfg.vol = sClamp(Math.round(numSafe(s.vol, 70)), 0, 100, 70);
     if (s.up && typeof s.up === 'object')
@@ -500,11 +525,11 @@ try {
         seed: (typeof s.proc.seed === 'string' && s.proc.seed.length <= 32) ? s.proc.seed : 'x3f-6' };
     if (s.soft && typeof s.soft === 'object')
       cfg.soft = {
-        on: !!s.soft.on, model: s.soft.model === 'fem' ? 'nodebeam' : 'nodebeam',
+        on: !!s.soft.on, model:'nodebeam',
         vol: s.soft.vol !== false, layers: s.soft.layers !== false,
-        rays: sClamp(Math.round(numSafe(s.soft.rays, 256)), 32, 5000, 256),
+        rays: sClamp(Math.round(numSafe(s.soft.rays, 128)), 32, 5000, 128),
         selfcol: s.soft.selfcol !== false, ccd: s.soft.ccd !== false,
-        hz: sClamp(Math.round(numSafe(s.soft.hz, 240)), 50, 10000, 240)
+        hz: sClamp(Math.round(numSafe(s.soft.hz, 120)), 50, 10000, 120)
       };
   }
 } catch(e){}
@@ -639,7 +664,7 @@ function toggleFlatCol(ref, on, makeDesc){
   if (on){
     if (!ref.col){
       if (typeof makeDesc !== 'function'){
-        console.warn('toggleFlatCol: makeDesc ausente — collider NÃO criado (defesa anti-regressão)');
+        console.warn('toggleFlatCol: makeDesc ausente — collider NÃO criado');
         return;
       }
       try {
@@ -655,7 +680,6 @@ function toggleFlatCol(ref, on, makeDesc){
 
 let worldMode = 'flat', prevMode = 'flat';
 
-/* ---- 4a. MUNDO PLANO ORIGINAL ---- */
 const flat = { floorMesh:null, floor:{ col:null }, blocks:[] };
 function setFlatActive(on){
   if (flat.floorMesh) flat.floorMesh.visible = on;
@@ -982,6 +1006,7 @@ const tireMat  = new THREE.MeshStandardMaterial({ color:0x161514, roughness:0.94
 const hubMat   = new THREE.MeshStandardMaterial({ color:0xd8d1c0, roughness:0.38, metalness:0.55 });
 const seatMat  = new THREE.MeshStandardMaterial({ color:0x2e2b27, roughness:0.75 });
 const sensorMat= new THREE.MeshStandardMaterial({ color:0x14201d, emissive:0x35e0c8, emissiveIntensity:2.2 });
+const camPodMat= new THREE.MeshStandardMaterial({ color:0x241f14, emissive:0xe5a13c, emissiveIntensity:1.6 });
 const glassPhysical = new THREE.MeshPhysicalMaterial({ color:0xffffff, roughness:0.07, metalness:0,
   transmission:1, thickness:0.4, ior:1.45, clearcoat:1, clearcoatRoughness:0.06,
   attenuationColor:new THREE.Color(0xbfe0d8), attenuationDistance:2.5 });
@@ -1008,6 +1033,9 @@ function defaultParts(){
   ];
 }
 let carParts = [], suspType = 'double', x3fHz = 120;
+let x3fArm = 'double';
+let x3fNodes = [];                    // {t:'sensor'|'cam', p:[x,y,z], dbg:{d,hit}}
+let x3fMeshes = [];
 let lowKeys = [['KeyT','KeyF'],['KeyY','KeyH'],['KeyU','KeyJ'],['KeyI','KeyK']];
 const LR_DEF = lowKeys.map(k=>k.slice());
 
@@ -1110,6 +1138,17 @@ function loadCar(){
   carParts = parts.length ? parts : defaultParts();
   suspType = (data && SUSP_NAMES.includes(data.susp)) ? data.susp : 'double';
   x3fHz = sClamp(Math.round(numSafe(data && data.x3f, 120)), 12, 624, 120);
+  x3fArm = (data && (data.x3farm==='single' || data.x3farm==='double')) ? data.x3farm : 'double';
+  x3fNodes = [];
+  if (data && Array.isArray(data.x3fnodes)){
+    for (const n of data.x3fnodes){
+      if (!n || (n.t!=='sensor' && n.t!=='cam')) continue;
+      const P = numArr(n.p, 3);
+      if (!P) continue;
+      x3fNodes.push({ t:n.t, p:P.map(v=>sClamp(v,-20,20,0)), dbg:{d:3.0,hit:false} });
+      if (x3fNodes.length >= 16) break;
+    }
+  }
   const LWN = ['fe','fd','te','td'];
   lowKeys = LR_DEF.map((d, i)=>{
     let src = (data && data.lowrider && Array.isArray(data.lowrider[LWN[i]])) ? data.lowrider[LWN[i]] : null;
@@ -1123,7 +1162,8 @@ function saveCar(){
     localStorage.setItem(LS_CAR, JSON.stringify({
       parts: carParts.map(p=>({ t:p.t, p:p.p.map(v=>+v.toFixed(4)), s:p.s.map(v=>+v.toFixed(4)),
                                 r:p.r.map(v=>+v.toFixed(4)), name:p.name })),
-      susp: suspType, x3f: x3fHz,
+      susp: suspType, x3f: x3fHz, x3farm: x3fArm,
+      x3fnodes: x3fNodes.map(n=>({ t:n.t, p:n.p.map(v=>+v.toFixed(3)) })),
       lowrider: { fe:lowKeys[0], fd:lowKeys[1], te:lowKeys[2], td:lowKeys[3] }
     }));
   } catch(e){}
@@ -1170,19 +1210,10 @@ for (const sx of [1,-1]) for (const z of [1.20,-1.10]){
   t.position.set(sx*0.86,0.06,z+0.05);
   towers.push(t);
 }
-const x3fCarPods = [];
-for (const s of [1,-1]){
-  const pod = new THREE.Mesh(new THREE.CylinderGeometry(0.045,0.045,0.12,10), darkMat);
-  pod.position.set(s*0.45,-0.30,1.55); chassis.add(pod);
-  const tip = new THREE.Mesh(box(0.07,0.03,0.07), sensorMat);
-  tip.position.set(s*0.45,-0.37,1.55); chassis.add(tip);
-  pod.visible = tip.visible = false;
-  x3fCarPods.push(pod, tip);
-}
 regDyn(chassis, new THREE.Vector3(0,0.3,0), 2.4);
 
 /* ============================================================
-   [7] RODAS + SUSPENSÕES VISUAIS
+   [7] RODAS + SUSPENSÕES VISUAIS (X3F respeita double/single)
 ============================================================ */
 const cylGeo = new THREE.CylinderGeometry(1,1,1,10);
 const bjGeo = new THREE.SphereGeometry(0.055,12,10);
@@ -1257,22 +1288,21 @@ const wheels = [
   buildWheel(+0.95,-1.15,false,+1), buildWheel(-0.95,-1.15,false,-1)
 ];
 for (const w of wheels) regDyn(w.frame, new THREE.Vector3(w.x,-0.35,w.z), 1.2);
-const SENS_LOCAL = [[0.45,-0.15,1.85],[-0.45,-0.15,1.85]];
-for (const w of wheels) SENS_LOCAL.push([w.x,-0.10,w.z+0.55]);
 
 function rebuildSuspensionVisuals(){
+  const armStyle = suspType==='x3f' ? x3fArm : suspType;
   for (const w of wheels){
     w.susG.clear();
-    const v = { type:suspType };
+    const v = { type:armStyle };
     const sx = w.sx, z = w.z;
     const mkArm = (px,py,pz)=>{ const m = new THREE.Mesh(cylGeo, armMat);
       m.castShadow = true; w.susG.add(m); return { m, p:new THREE.Vector3(px,py,pz) }; };
     const mkPick = (px,py,pz)=>{ const s = new THREE.Mesh(pickGeo, steelMat);
       s.position.set(px,py,pz); w.susG.add(s); };
-    if (suspType==='double' || suspType==='x3f' || suspType==='single' || suspType==='lowrider'){
+    if (armStyle==='double' || armStyle==='single' || suspType==='x3f' || suspType==='lowrider'){
       v.lF = mkArm(sx*0.45,-0.16,z+0.40); v.lR = mkArm(sx*0.45,-0.16,z-0.40);
       mkPick(sx*0.45,-0.16,z+0.40); mkPick(sx*0.45,-0.16,z-0.40);
-      if (suspType!=='single'){
+      if (armStyle!=='single'){
         v.uF = mkArm(sx*0.40,0.18,z+0.24); v.uR = mkArm(sx*0.40,0.18,z-0.24);
         mkPick(sx*0.40,0.18,z+0.24); mkPick(sx*0.40,0.18,z-0.24);
       }
@@ -1281,13 +1311,7 @@ function rebuildSuspensionVisuals(){
       v.spring.castShadow = true; v.springG.add(v.spring);
       v.damper = new THREE.Mesh(cylGeo, suspType==='lowrider' ? hydMat : darkMat); w.susG.add(v.damper);
       v.top = new THREE.Vector3(sx*0.86, 0.10, z+0.05);
-      if (suspType==='x3f'){
-        const pod = new THREE.Mesh(new THREE.CylinderGeometry(0.035,0.035,0.10,8), darkMat);
-        pod.position.set(w.x,-0.12,w.z+0.58); w.susG.add(pod);
-        const tip = new THREE.Mesh(box(0.055,0.025,0.055), sensorMat);
-        tip.position.set(w.x,-0.18,w.z+0.58); w.susG.add(tip);
-      }
-    } else if (suspType==='mac'){
+    } else if (armStyle==='mac'){
       v.lF = mkArm(sx*0.45,-0.16,z+0.40); v.lR = mkArm(sx*0.45,-0.16,z-0.40);
       mkPick(sx*0.45,-0.16,z+0.40); mkPick(sx*0.45,-0.16,z-0.40);
       v.springG = new THREE.Group(); w.susG.add(v.springG);
@@ -1307,13 +1331,50 @@ function rebuildSuspensionVisuals(){
     w.v = v;
   }
   for (const t of towers) t.visible = suspType !== 'leaf';
-  for (const p of x3fCarPods) p.visible = suspType === 'x3f';
+  rebuildX3FPods();
+}
+
+/* ---- pods de sensor/câmera do X3F (editor clicável) ---- */
+function rebuildX3FPods(){
+  for (const m of x3fMeshes) chassis.remove(m);
+  x3fMeshes.length = 0;
+  if (suspType !== 'x3f') return;
+  for (const n of x3fNodes){
+    const g = new THREE.Group();
+    g.position.set(n.p[0], n.p[1], n.p[2]);
+    if (n.t === 'cam'){
+      const body2 = new THREE.Mesh(box(0.10,0.09,0.14), darkMat);
+      const lens = new THREE.Mesh(new THREE.CylinderGeometry(0.032,0.032,0.05,10), camPodMat);
+      lens.rotation.x = Math.PI/2; lens.position.z = 0.08;
+      g.add(body2, lens);
+    } else {
+      const pod = new THREE.Mesh(new THREE.CylinderGeometry(0.035,0.035,0.10,8), darkMat);
+      const tip = new THREE.Mesh(box(0.055,0.025,0.055), sensorMat);
+      tip.position.y = -0.065;
+      g.add(pod, tip);
+    }
+    g.userData.x3f = n;
+    n.mesh = g;
+    chassis.add(g);
+    x3fMeshes.push(g);
+  }
+}
+function x3fDefaultNodes(){
+  const arr = [
+    { t:'sensor', p:[0.45,-0.15,1.85] },
+    { t:'sensor', p:[-0.45,-0.15,1.85] }
+  ];
+  for (const w of wheels) arr.push({ t:'sensor', p:[w.x,-0.10,w.z+0.55] });
+  return arr;
+}
+function x3fActiveNodes(){
+  return x3fNodes.length ? x3fNodes : x3fDefaultNodes();
 }
 
 /* ============================================================
-   [8] DEBUG — buffers 4 rodas × 32 rays
+   [8] DEBUG — buffers 4 rodas × 231 rays + nós X3F
 ============================================================ */
-const MAXR = 32;
+const MAXR = 231;
 const rayPos = new Float32Array(MAXR*4*2*3), rayCol = new Float32Array(MAXR*4*2*3);
 const ptPos = new Float32Array(MAXR*4*3);
 const rayGeo = new THREE.BufferGeometry();
@@ -1327,15 +1388,16 @@ ptGeo.setAttribute('position', new THREE.BufferAttribute(ptPos,3).setUsage(THREE
 const rayPoints = new THREE.Points(ptGeo, new THREE.PointsMaterial({ color:0xffc46b, size:0.07 }));
 rayPoints.frustumCulled = false; scene.add(rayPoints);
 let raysVisible = !!cfg.rays;
-regDyn(rayLines, v=>v.copy(carPos), 3.2, false, ()=>raysVisible);
-regDyn(rayPoints, v=>v.copy(carPos), 3.2, false, ()=>raysVisible);
+regDyn(rayLines, v=>v.copy(carPos), 3.4, false, ()=>raysVisible);
+regDyn(rayPoints, v=>v.copy(carPos), 3.4, false, ()=>raysVisible);
 
-const sensPos = new Float32Array(6*2*3);
-const sensGeo = new THREE.BufferGeometry();
-sensGeo.setAttribute('position', new THREE.BufferAttribute(sensPos,3).setUsage(THREE.DynamicDrawUsage));
-const sensLines = new THREE.LineSegments(sensGeo,
-  new THREE.LineBasicMaterial({ color:0x35e0c8, transparent:true, opacity:0.8 }));
-sensLines.frustumCulled = false; scene.add(sensLines);
+const xnPos = new Float32Array(16*2*3), xnCol = new Float32Array(16*2*3);
+const xnGeo = new THREE.BufferGeometry();
+xnGeo.setAttribute('position', new THREE.BufferAttribute(xnPos,3).setUsage(THREE.DynamicDrawUsage));
+xnGeo.setAttribute('color', new THREE.BufferAttribute(xnCol,3).setUsage(THREE.DynamicDrawUsage));
+const xnLines = new THREE.LineSegments(xnGeo,
+  new THREE.LineBasicMaterial({ vertexColors:true, transparent:true, opacity:0.85 }));
+xnLines.frustumCulled = false; scene.add(xnLines);
 const lookPos = new Float32Array(4*2*3);
 const lookGeo = new THREE.BufferGeometry();
 lookGeo.setAttribute('position', new THREE.BufferAttribute(lookPos,3).setUsage(THREE.DynamicDrawUsage));
@@ -1347,15 +1409,17 @@ let RAY_OFFSETS = [{x:0,z:0}];
 function setRayCount(n){
   n = sClamp(Math.round(numSafe(n, 6)), 1, MAXR, 6);
   const offs = [{x:0,z:0}];
-  const rings = [[0.11,5],[0.20,8],[0.27,MAXR]];
   let ri = 0;
-  while (offs.length < n){
-    const [rad,cap] = rings[Math.min(ri,rings.length-1)]; ri++;
-    const cnt = Math.max(1, Math.min(cap, n-offs.length));
-    for (let i=0;i<cnt && offs.length<n;i++){
-      const a = (i + (ri%2)*0.5)/cnt*Math.PI*2 + 0.6;
+  while (offs.length < n && ri < 40){
+    const rad = Math.min(0.28, 0.085 + ri*0.017);
+    const cap = Math.max(5, Math.floor(rad*96));
+    const cnt = Math.min(cap, n - offs.length);
+    const a0 = (ri%2)*0.5;
+    for (let i=0;i<cnt;i++){
+      const a = (i + a0)/cnt*Math.PI*2 + 0.6;
       offs.push({ x:Math.cos(a)*rad, z:Math.sin(a)*rad });
     }
+    ri++;
   }
   RAY_OFFSETS = offs;
   for (const w of wheels)
@@ -1438,9 +1502,7 @@ function updateAudio(dt, throttle, spd){
 }
 
 /* ============================================================
-   [10] MULTIPLAYER — BroadcastChannel + CHAT
-   Carros remotos agora têm SUSPENSÃO COMPLETA simulada
-   localmente por raycasts (o mapa MP é determinístico).
+   [10] MULTIPLAYER — BroadcastChannel + CHAT + suspensão remota
 ============================================================ */
 const NET_ID = Math.random().toString(36).slice(2,10);
 const NET_DISC = 'wb6-disc';
@@ -1470,11 +1532,9 @@ function stMsg(){
     p:[+t.x.toFixed(2),+t.y.toFixed(2),+t.z.toFixed(2)],
     q:[+q.x.toFixed(3),+q.y.toFixed(3),+q.z.toFixed(3),+q.w.toFixed(3)] };
 }
-// ---- carro remoto COM suspensão articulada ----
 const remoteMat = new THREE.MeshStandardMaterial({ color:0x4a7f9e, roughness:0.5 });
 const remoteBoxGeo = new THREE.BoxGeometry(1.6,0.42,3.4);
 const remoteCapGeo = new THREE.CapsuleGeometry(0.5,0.16,6,10);
-const _rq = new THREE.Quaternion();
 const _r1 = new THREE.Vector3(), _r2 = new THREE.Vector3(), _r3 = new THREE.Vector3(),
       _r4 = new THREE.Vector3(), _r5 = new THREE.Vector3(), _r6 = new THREE.Vector3();
 const RAYLEN_S = CFG.rest + CFG.maxDrop + CFG.wheelR;
@@ -1525,7 +1585,6 @@ function removeRemote(p){
   if (p.mesh){ scene.remove(p.mesh.g); p.mesh = null; }
 }
 const _peerRay = new RAPIER.Ray({x:0,y:0,z:0},{x:0,y:-1,z:0});
-// simula a suspensão do peer localmente: raycasts no mundo (determinístico)
 function updateRemoteVisual(p, dt){
   const g = p.mesh.g;
   const pos = g.position, q = g.quaternion;
@@ -1539,7 +1598,6 @@ function updateRemoteVisual(p, dt){
   }
   p.mesh.prev.copy(pos); p.mesh.hasPrev = true;
   for (const rw of p.mesh.rwheels){
-    // hardpoint da roda no mundo
     _r4.set(rw.x, CFG.hardY, rw.z).applyQuaternion(q).add(pos);
     _peerRay.origin.x = _r4.x; _peerRay.origin.y = _r4.y; _peerRay.origin.z = _r4.z;
     _peerRay.dir.x = -up.x; _peerRay.dir.y = -up.y; _peerRay.dir.z = -up.z;
@@ -1551,16 +1609,13 @@ function updateRemoteVisual(p, dt){
     rw.sg.position.set(rw.x, yW, rw.z);
     rw.spin += (fwdSpd / CFG.wheelR) * dt;
     rw.spinG.rotation.x = rw.spin;
-    // braços inferiores: pickups fixos → ball joint móvel (espaço local do group)
     _r5.set(rw.x - rw.sx*0.06, yW - 0.10, rw.z);
     placeCyl(rw.armA, rw.pkA, _r5, 0.024);
     placeCyl(rw.armB, rw.pkB, _r5, 0.024);
-    // coilover: torre fixa → ponto do braço
     _r6.set(rw.x - rw.sx*0.20, yW - 0.04, rw.z - 0.02);
     orientSpring(rw.springG, rw.top, _r6);
   }
 }
-// ---- mensagens ----
 function onNetMsg(e){
   if (!net) return;
   const m = e.data;
@@ -1761,30 +1816,38 @@ chatIn.addEventListener('keydown', e=>{
 });
 
 /* ============================================================
-   [10b] SOFTBODY NODE-BEAM — EXPERIMENTAL
-   84 nós (massas) + ~600 vigas (molas c/ damping) 26-viz.
-   • ancoragem elástica ao frame rígido (reação → corpo)
-   • volume por soma de tetraedros; pressão anti-colapso
-   • muro de colisão: casting rays do centro p/ fora,
-     atualizado a ≤120 Hz, nós organizados em 3 camadas
-   • self-collision O(n²) com Set de pares conectados
-   • CCD preditivo: segmento pos→pos+v·h contra planos
-   • taxa digitada 50–10000 Hz, acumulador, cap honesto
+   [10b] SOFTBODY NODE-BEAM — v2 À PROVA DE TRAVAMENTO
+   Correções do freeze:
+   1. guard de NaN/Inf dos nós ANTES do muro (a causa: hash
+      de NaN colapsava células → 84 nós × 5000 planos ×
+      10 substeps = milhões de iterações/frame);
+   2. muro de rays INCREMENTAL (lote/frame, refresco em ~6);
+   3. cap de 64 planos por nó no cache;
+   4. orçamento de tempo 3,5 ms/frame nos substeps;
+   5. kill-switch de explosão (nó a >6 m do carro → reset);
+   6. softbody não roda com menu/editor abertos.
 ============================================================ */
 const SB_SKIN=0.20, SB_KA=26000, SB_CA=260, SB_KB=42000, SB_CB=170,
-      SB_KSEP=5000, SB_DMIN=0.22, SB_KVOL=9000, SB_KCON=9000, SB_CCON=260, SB_VMAX=40;
+      SB_KSEP=5000, SB_DMIN=0.22, SB_KVOL=9000, SB_KCON=9000, SB_CCON=260, SB_VMAX=40,
+      SB_BUDGET=0.0035, SB_PLANOCAP=64;
 const _sbA = new THREE.Vector3(), _sbB = new THREE.Vector3(), _sbC = new THREE.Vector3(),
       _sbD = new THREE.Vector3(), _sbE = new THREE.Vector3(), _sbG = new THREE.Vector3();
 const SB = {
   on:false, sup:false, built:false,
   nodes:[], beams:[], faceIdx:[], conn:null, nodeWall:[],
   mesh:null, posAttr:null,
-  wall:{ n:0, data:new Float32Array(5000*6), hash:new Map(), acc:0 },
+  wall:{ n:0, data:new Float32Array(5000*6), hash:new Map(),
+         pend:0, cursor:0, newData:null, newHash:new Map(), ready:false },
   dirs:{ n:0, arr:null },
-  acc:0, effHz:0, maxR:2.0, v0:1, warned:false
+  acc:0, wallAcc:0, effHz:0, maxR:2.0, v0:1, grace:0, killT:0
 };
 function sbHashKey(x, y, z){
   return ((Math.floor(x)+512)&2047) | (((Math.floor(y)+512)&2047)<<11) | (((Math.floor(z)+512)&2047)<<22);
+}
+function sbNodesSane(){
+  for (const nde of SB.nodes)
+    if (!isF(nde.p.x + nde.p.y + nde.p.z + nde.v.x + nde.v.y + nde.v.z)) return false;
+  return true;
 }
 function sbVolume(outC){
   const f = SB.faceIdx, nd = SB.nodes;
@@ -1870,6 +1933,9 @@ function sbReset(){
     nde.v.copy(linV);
     if (!finVec(nde.p) || !finVec(nde.v)){ nde.p.copy(carPos); nde.v.set(0,0,0); }
   }
+  SB.grace = 0.30;
+  SB.wall.ready = false;
+  SB.wall.pend = 0;
 }
 function sbEnable(){
   sbBuild();
@@ -1914,22 +1980,29 @@ function sbDirs(n){
   return arr;
 }
 const _sbRay = new RAPIER.Ray({x:0,y:0,z:0},{x:0,y:1,z:0});
-function sbWallUpdate(){
-  const s = cfg.soft;
-  const nd = SB.nodes, w = SB.wall;
-  for (let i=0;i<SB.nodeWall.length;i++) SB.nodeWall[i].length = 0;
-  if (!s.layers){ w.n = 0; w.hash.clear(); return; }
+// muro INCREMENTAL: um lote por frame; troca de buffer só quando completo
+function sbWallChunk(){
+  const w = SB.wall, s = cfg.soft;
+  if (!s.layers){ w.ready = false; w.n = 0; return; }
+  if (!w.pend){
+    w.pend = sClamp(Math.round(s.rays), 32, 5000, 128);
+    w.cursor = 0;
+    w.newData = new Float32Array(w.pend*6);
+    w.newHash = new Map();
+    w.ready = false;
+    return;
+  }
   let Cx=0, Cy=0, Cz=0;
-  for (const nde of nd){ Cx+=nde.p.x; Cy+=nde.p.y; Cz+=nde.p.z; }
-  Cx/=nd.length; Cy/=nd.length; Cz/=nd.length;
-  if (![Cx,Cy,Cz].every(isF)){ w.n = 0; return; }
+  for (const nde of SB.nodes){ Cx+=nde.p.x; Cy+=nde.p.y; Cz+=nde.p.z; }
+  Cx/=SB.nodes.length; Cy/=SB.nodes.length; Cz/=SB.nodes.length;
+  if (![Cx,Cy,Cz].every(isF)){ w.pend = 0; return; }
   _sbC.set(Cx, Cy, Cz);
-  const n = sClamp(Math.round(s.rays), 32, 5000, 256);
-  const dirs = sbDirs(n);
+  const dirs = sbDirs(w.pend);
   const R = SB.maxR*1.25;
-  let wn = 0;
-  w.hash.clear();
-  for (let i=0;i<n && wn<5000;i++){
+  const perFrame = Math.max(64, Math.ceil(w.pend/6));   // refresco completo em ~6 frames
+  const end = Math.min(w.pend, w.cursor + perFrame);
+  let wn = w.cursor;
+  for (let i=w.cursor;i<end;i++){
     _sbD.set(dirs[i*3], dirs[i*3+1], dirs[i*3+2]);
     _sbRay.origin.x=_sbC.x; _sbRay.origin.y=_sbC.y; _sbRay.origin.z=_sbC.z;
     _sbRay.dir.x=_sbD.x; _sbRay.dir.y=_sbD.y; _sbRay.dir.z=_sbD.z;
@@ -1947,38 +2020,47 @@ function sbWallUpdate(){
         }
       } catch(e){}
       const o = wn*6;
-      w.data[o]=px; w.data[o+1]=py; w.data[o+2]=pz;
-      w.data[o+3]=nx; w.data[o+4]=ny; w.data[o+5]=nz;
+      w.newData[o]=px; w.newData[o+1]=py; w.newData[o+2]=pz;
+      w.newData[o+3]=nx; w.newData[o+4]=ny; w.newData[o+5]=nz;
       const key = sbHashKey(px/0.6, py/0.6, pz/0.6);
-      let arr = w.hash.get(key);
-      if (!arr){ arr = []; w.hash.set(key, arr); }
+      let arr = w.newHash.get(key);
+      if (!arr){ arr = []; w.newHash.set(key, arr); }
       arr.push(wn);
       wn++;
     }
   }
-  w.n = wn;
-  // cache: planos relevantes por nó (camadas: nós externos resolvem primeiro)
-  for (let i=0;i<nd.length;i++){
-    const nde = nd[i];
-    const cx = Math.floor(nde.p.x/0.6), cy = Math.floor(nde.p.y/0.6), cz = Math.floor(nde.p.z/0.6);
-    for (let dx=-1;dx<=1;dx++)for(let dy=-1;dy<=1;dy++)for(let dz=-1;dz<=1;dz++){
-      const arr = w.hash.get(sbHashKey(cx+dx, cy+dy, cz+dz));
-      if (!arr) continue;
-      for (const wi of arr){
-        const o = wi*6;
-        const dd = (nde.p.x-w.data[o])*w.data[o+3] + (nde.p.y-w.data[o+1])*w.data[o+4] + (nde.p.z-w.data[o+2])*w.data[o+5];
-        if (dd < SB_SKIN + 0.45) SB.nodeWall[i].push(wi);
+  w.cursor = wn;
+  if (w.cursor >= w.pend - (w.pend - end) && end >= w.pend){
+    // refresh completo: troca e reconstrói cache por nó (cap SB_PLANOCAP)
+    w.data = w.newData; w.hash = w.newHash; w.n = w.cursor;
+    for (let i=0;i<SB.nodeWall.length;i++) SB.nodeWall[i].length = 0;
+    const nd = SB.nodes;
+    for (let i=0;i<nd.length;i++){
+      const nde = nd[i];
+      const cx = Math.floor(nde.p.x/0.6), cy = Math.floor(nde.p.y/0.6), cz = Math.floor(nde.p.z/0.6);
+      let cnt = 0;
+      for (let dx=-1;dx<=1 && cnt<SB_PLANOCAP;dx++)
+      for (let dy=-1;dy<=1 && cnt<SB_PLANOCAP;dy++)
+      for (let dz=-1;dz<=1 && cnt<SB_PLANOCAP;dz++){
+        const arr = w.hash.get(sbHashKey(cx+dx, cy+dy, cz+dz));
+        if (!arr) continue;
+        for (const wi of arr){
+          if (cnt >= SB_PLANOCAP) break;
+          const o = wi*6;
+          const dd = (nde.p.x-w.data[o])*w.data[o+3] + (nde.p.y-w.data[o+1])*w.data[o+4] + (nde.p.z-w.data[o+2])*w.data[o+5];
+          if (dd < SB_SKIN + 0.45){ SB.nodeWall[i].push(wi); cnt++; }
+        }
       }
     }
+    w.pend = 0;
+    w.ready = true;
   }
 }
 function sbStep(h){
   const nd = SB.nodes, beams = SB.beams, w = SB.wall, s = cfg.soft;
-  // zera forças + gravidade
   for (const nde of nd){
     nde.F.set(0, -nde.m*19, 0);
   }
-  // vigas node-beam
   for (let bi=0;bi<beams.length;bi++){
     const b = beams[bi];
     const A = nd[b.a], B = nd[b.b];
@@ -1993,11 +2075,10 @@ function sbStep(h){
     A.F.add(_sbC);
     B.F.sub(_sbC);
   }
-  // ancoragem elástica ao frame rígido + reação acumulada
   let rX=0, rY=0, rZ=0, aCx=0, aCy=0, aCz=0, aN=0;
   for (let i=0;i<nd.length;i++){
     const nde = nd[i];
-    _sbA.copy(nde.a).applyQuaternion(carQ).add(carPos);  // attach world
+    _sbA.copy(nde.a).applyQuaternion(carQ).add(carPos);
     _sbB.subVectors(_sbA, nde.p);
     pointVel(_sbA, _sbD);
     _sbE.subVectors(nde.v, _sbD);
@@ -2011,7 +2092,6 @@ function sbStep(h){
     rX -= fx; rY -= fy; rZ -= fz;
     aCx += _sbA.x; aCy += _sbA.y; aCz += _sbA.z; aN++;
   }
-  // preservação de volume (anti-colapso) — pressão nas faces
   if (s.vol){
     const V = sbVolume(_sbC);
     if (V > 1e-4){
@@ -2033,9 +2113,8 @@ function sbStep(h){
       }
     }
   }
-  // colisão em camadas vs muro de rays (exterior→interior)
   let cX=0, cY=0, cZ=0, cn=0, ctX=0, ctY=0, ctZ=0;
-  if (s.layers && w.n > 0){
+  if (s.layers && w.ready && w.n > 0 && SB.grace <= 0){
     for (let layer=2; layer>=0; layer--){
       for (let i=0;i<nd.length;i++){
         const nde = nd[i];
@@ -2059,7 +2138,6 @@ function sbStep(h){
       }
     }
   }
-  // self-collision (pares não conectados por viga)
   if (s.selfcol){
     for (let i=0;i<nd.length;i++){
       const A = nd[i];
@@ -2078,8 +2156,7 @@ function sbStep(h){
       }
     }
   }
-  // resolução contínua: segmento pos→pos+v·h contra planos (preditivo)
-  if (s.ccd && w.n > 0){
+  if (s.ccd && w.ready && w.n > 0 && SB.grace <= 0){
     for (let i=0;i<nd.length;i++){
       const nde = nd[i];
       const list = SB.nodeWall[i];
@@ -2099,7 +2176,6 @@ function sbStep(h){
       }
     }
   }
-  // integração semi-implícita
   for (const nde of nd){
     nde.v.x += nde.F.x/nde.m*h;
     nde.v.y += nde.F.y/nde.m*h;
@@ -2108,7 +2184,6 @@ function sbStep(h){
     if (sp > SB_VMAX) nde.v.multiplyScalar(SB_VMAX/sp);
     nde.p.x += nde.v.x*h; nde.p.y += nde.v.y*h; nde.p.z += nde.v.z*h;
   }
-  // transmissão ao corpo rígido (reação da ancoragem + contatos)
   if (aN > 0 && (rX || rY || rZ)){
     _sbG.set(rX, rY, rZ).multiplyScalar(h);
     _sbC.set(aCx/aN, aCy/aN, aCz/aN);
@@ -2121,28 +2196,43 @@ function sbStep(h){
   }
 }
 function softUpdate(dt){
-  const active = cfg.soft.on && !net && !SB.sup;
+  const active = cfg.soft.on && !net && !SB.sup && !paused();
   if (SB.on !== active){
     if (active) sbEnable(); else sbDisable();
   }
   if (!SB.on || dt <= 0) return;
-  // muro de colisão a ≤120 Hz (independente da taxa de integração)
-  SB.wall.acc += dt;
-  if (SB.wall.acc >= 1/120){ SB.wall.acc = 0; sbWallUpdate(); }
-  // integração na taxa digitada (cap honesto de 10 substeps/frame)
-  const hz = sClamp(Math.round(cfg.soft.hz), 50, 10000, 240);
+  // GUARD PRINCIPAL: estados inválidos NUNCA chegam ao muro/hash
+  if (!sbNodesSane()){ sbReset(); return; }
+  SB.grace -= dt;
+  // muro incremental (um lote por frame)
+  SB.wallAcc += dt;
+  if (SB.wallAcc >= 1/120){ SB.wallAcc = 0; sbWallChunk(); }
+  if (!sbNodesSane()){ sbReset(); return; }   // chunk não altera nós, mas barato garantir
+  // integração com ORÇAMENTO DE TEMPO
+  const hz = sClamp(Math.round(cfg.soft.hz), 50, 10000, 120);
   const h = 1/hz;
   SB.acc += dt;
+  const t0 = performance.now();
   let steps = 0;
-  while (SB.acc >= h && steps < 10){ sbStep(h); SB.acc -= h; steps++; }
-  if (steps === 10) SB.acc = 0;
+  while (SB.acc >= h && steps < 10){
+    sbStep(h);
+    SB.acc -= h; steps++;
+    if (performance.now() - t0 > SB_BUDGET*1000) break;   // respeita o frame
+  }
+  if (steps === 10 || performance.now() - t0 > SB_BUDGET*1000) SB.acc = Math.min(SB.acc, h);
   SB.effHz += (steps/Math.max(dt, 1e-3) - SB.effHz)*0.1;
-  // NaN guard do softbody
-  for (const nde of SB.nodes){
-    if (!isF(nde.p.x + nde.p.y + nde.p.z)){
-      sbReset();
-      if (!SB.warned){ toast('SOFTBODY RESETADO (estado inválido)'); SB.warned = true; }
-      break;
+  // kill-switch de explosão (0,25s de intervalo)
+  SB.killT += dt;
+  if (SB.killT > 0.25){
+    SB.killT = 0;
+    const lim = 6;
+    for (const nde of SB.nodes){
+      if (Math.abs(nde.p.x-carPos.x) > lim || Math.abs(nde.p.y-carPos.y) > lim ||
+          Math.abs(nde.p.z-carPos.z) > lim){
+        sbReset();
+        toast('SOFTBODY RESETADO (explosão detectada)');
+        break;
+      }
     }
   }
 }
@@ -2296,11 +2386,12 @@ function setEditor(open){
   if (open){ keys.clear(); updateEditorUI(); }
   else {
     if (lrCapture){ lrCapture.btn.classList.remove('cap'); lrCapture = null; }
+    selX3f = null;
     deselectPart(); rebuildCarPhysics(); saveCar();
   }
 }
 
-// ---- editor ----
+// ---- editor de peças ----
 let selPart = null, selHelper = null;
 const raycaster = new THREE.Raycaster();
 function selectPart(p){
@@ -2351,6 +2442,7 @@ function restoreDefaultCar(){
   carParts = defaultParts();
   for (const p of carParts) createPartMesh(p);
   deselectPart();
+  selX3f = null;
   rebuildCarPhysics(); saveCar();
   if (SB.on){
     for (const p of carParts) p.mesh.visible = false;
@@ -2365,9 +2457,22 @@ renderer.domElement.addEventListener('pointerup', e=>{
   const r = renderer.domElement.getBoundingClientRect();
   const ndc = new THREE.Vector2(((e.clientX-r.left)/r.width)*2-1, -((e.clientY-r.top)/r.height)*2+1);
   raycaster.setFromCamera(ndc, camera);
+  // primeiro: pods do X3F (se na suspensão x3f)
+  if (suspType === 'x3f' && x3fMeshes.length){
+    const hx = raycaster.intersectObjects(x3fMeshes, true);
+    if (hx.length){
+      let o = hx[0].object;
+      while (o && !o.userData.x3f) o = o.parent;
+      if (o && o.userData.x3f){
+        selX3f = o.userData.x3f;
+        updateEditorUI();
+        return;
+      }
+    }
+  }
   const hits = raycaster.intersectObjects(carParts.map(p=>p.mesh), false);
-  if (hits.length) selectPart(hits[0].object.userData.part);
-  else deselectPart();
+  if (hits.length){ selX3f = null; selectPart(hits[0].object.userData.part); }
+  else { selX3f = null; deselectPart(); }
 });
 
 // ---- low rider: captura de teclas ----
@@ -2423,6 +2528,7 @@ function bindEditorUI(){
   }));
   $('e-susp').addEventListener('change', e=>{
     suspType = SUSP_NAMES.includes(e.target.value) ? e.target.value : 'double';
+    selX3f = null;
     rebuildSuspensionVisuals(); saveCar(); updateSuspSub(); updateEditorUI();
   });
   $('e-x3frange').addEventListener('input', e=>{
@@ -2430,6 +2536,58 @@ function bindEditorUI(){
     $('e-x3fhz').textContent = x3fHz + ' Hz';
     saveCar();
   });
+  $('e-x3farm').addEventListener('change', e=>{
+    x3fArm = e.target.value === 'single' ? 'single' : 'double';
+    rebuildSuspensionVisuals(); saveCar();
+  });
+  $('e-x3f-adds').addEventListener('click', ()=>{
+    if (x3fNodes.length >= 16){ toast('LIMITE DE 16 NÓS X3F'); return; }
+    const n = { t:'sensor', p:[0,0.2,1.4], dbg:{d:3.0,hit:false} };
+    x3fNodes.push(n);
+    selX3f = n;
+    rebuildX3FPods(); saveCar(); updateEditorUI();
+  });
+  $('e-x3f-addc').addEventListener('click', ()=>{
+    if (x3fNodes.length >= 16){ toast('LIMITE DE 16 NÓS X3F'); return; }
+    const n = { t:'cam', p:[0,0.5,1.5], dbg:{d:3.0,hit:false} };
+    x3fNodes.push(n);
+    selX3f = n;
+    rebuildX3FPods(); saveCar(); updateEditorUI();
+  });
+  $('e-x3f-clear').addEventListener('click', ()=>{
+    x3fNodes = [];
+    selX3f = null;
+    rebuildX3FPods(); saveCar(); updateEditorUI();
+    toast('NÓS X3F LIMPOS — USANDO OS 6 FIXOS');
+  });
+  $('e-x3f-del').addEventListener('click', ()=>{
+    if (!selX3f) return;
+    const i = x3fNodes.indexOf(selX3f);
+    if (i >= 0) x3fNodes.splice(i,1);
+    selX3f = null;
+    rebuildX3FPods(); saveCar(); updateEditorUI();
+  });
+  for (const b of document.querySelectorAll('.ebtn[data-xax]'))
+    b.addEventListener('click', ()=>{
+      if (!selX3f) return;
+      selX3f.p[+b.dataset.xax] += (+b.dataset.d)*0.1;
+      applyX3fEdit();
+    });
+  for (const [id,idx] of [['e-x0',0],['e-x1',1],['e-x2',2]])
+    $(id).addEventListener('change', e=>{
+      if (!selX3f) return;
+      const v = parseFloat(e.target.value);
+      if (isF(v)) selX3f.p[idx] = v;
+      applyX3fEdit();
+    });
+}
+let selX3f = null;
+function applyX3fEdit(){
+  if (!selX3f) return;
+  for (let i=0;i<3;i++) selX3f.p[i] = sClamp(selX3f.p[i], -20, 20, 0);
+  if (selX3f.mesh) selX3f.mesh.position.set(selX3f.p[0], selX3f.p[1], selX3f.p[2]);
+  saveCar();
+  updateEditorUI();
 }
 function updateEditorUI(){
   const $ = id => document.getElementById(id);
@@ -2453,6 +2611,17 @@ function updateEditorUI(){
   if (suspType==='lowrider') updateLowUI();
   $('e-x3frange').value = x3fHz;
   $('e-x3fhz').textContent = x3fHz + ' Hz';
+  $('e-x3farm').value = x3fArm;
+  $('e-x3fedit').style.display = x3fNodes.length ? 'block' : 'none';
+  $('e-x3fedit').classList.toggle('dis', !selX3f);
+  $('e-x3f-del').disabled = !selX3f;
+  if (selX3f){
+    $('e-x3fname').textContent = (selX3f.t==='cam' ? 'CÂMERA' : 'SENSOR') +
+      ' @ ' + selX3f.p.map(v=>v.toFixed(1)).join(', ');
+    $('e-x0').value = selX3f.p[0].toFixed(2);
+    $('e-x1').value = selX3f.p[1].toFixed(2);
+    $('e-x2').value = selX3f.p[2].toFixed(2);
+  }
 }
 function updateSuspSub(){
   const n = RAY_OFFSETS.length;
@@ -2500,11 +2669,11 @@ function netStatusText(){
 }
 function sbStatsLine(){
   if (!SB.built) return 'softbody desligado · ative para construir o lattice node-beam';
-  const hz = sClamp(Math.round(cfg.soft.hz), 50, 10000, 240);
+  const hz = sClamp(Math.round(cfg.soft.hz), 50, 10000, 120);
   const warn = cfg.soft.rays > 1500 ? ' · <b style="color:var(--hot)">custo alto</b>' : '';
   return `<b>${SB.nodes.length}</b> nós · <b>${SB.beams.length}</b> vigas · <b>${SB.faceIdx.length/3}</b> tris · ` +
-    `muro <b>${cfg.soft.layers ? sClamp(Math.round(cfg.soft.rays),32,5000,256) : 0}</b> rays @≤120Hz${warn}<br>` +
-    `integração alvo <b>${hz} Hz</b> · efetiva <b>${SB.on ? Math.round(SB.effHz) : '—'} Hz</b> (cap 10 substeps/frame)`;
+    `muro <b>${cfg.soft.layers ? sClamp(Math.round(cfg.soft.rays),32,5000,128) : 0}</b> rays em lotes${warn}<br>` +
+    `alvo <b>${hz} Hz</b> · efetiva <b>${SB.on ? Math.round(SB.effHz) : '—'} Hz</b> · orçamento 3,5 ms/frame`;
 }
 function updateMenuUI(){
   const $ = id => document.getElementById(id);
@@ -2517,7 +2686,6 @@ function updateMenuUI(){
   $('up-pix').checked = up.pix;
   const s = effScale();
   $('up-res').innerHTML = `interno: <b>${Math.round(innerWidth*s)}×${Math.round(innerHeight*s)}px</b> → tela ${innerWidth}×${innerHeight}`;
-  // softbody
   $('sb-on').checked = cfg.soft.on;
   $('sb-model').value = 'nodebeam';
   $('sb-vol').checked = cfg.soft.vol;
@@ -2529,7 +2697,6 @@ function updateMenuUI(){
   $('sb-hz').value = cfg.soft.hz;
   $('sb-hzv').textContent = cfg.soft.hz + ' Hz';
   $('sb-stats').innerHTML = sbStatsLine();
-  // resto
   $('m-name').value = cfg.name;
   $('m-priv').classList.toggle('on', hostPriv);
   $('m-pub').classList.toggle('on', !hostPriv);
@@ -2554,7 +2721,7 @@ function memLine(){
   const a = (localStorage.getItem(LS_CFG)||'').length;
   const b = (localStorage.getItem(LS_STATE)||'').length;
   const c = (localStorage.getItem(LS_CAR)||'').length;
-  return `config <b>${a} B</b> · mundo <b>${b} B</b> · carro <b>${c} B</b> (${carParts.length} peças)`;
+  return `config <b>${a} B</b> · mundo <b>${b} B</b> · carro <b>${c} B</b> (${carParts.length} peças · ${x3fNodes.length} nós X3F)`;
 }
 function updateMemUI(){
   try { document.getElementById('m-mem').innerHTML = memLine(); } catch(e){}
@@ -2565,7 +2732,7 @@ function updateMenuStats(){
     `FPS <b>${fpsEMA|0}</b> · DRAWS <b>${lastCalls}</b> · TRIS <b>${fmtK(lastTris)}</b><br>` +
     `VISÍVEIS <b>${statV}/${cullables.length}</b> · FRUSTUM <b>${statF}</b> · OCLUSÃO <b>${statO}</b> · CACHE <b>${cacheHits}</b><br>` +
     `RESOLUÇÃO <b>${rw}×${rh}</b> → ${innerWidth}×${innerHeight} (${Math.round(effScale()*100)}%)<br>` +
-    `RESYNCS <b>${nanResets}</b> · MUNDO <b>${worldMode.toUpperCase()}</b> · CCD <b>ON</b> · SOFTBODY <b>${SB.on?'ON':'OFF'}</b>`;
+    `RESYNCS <b>${nanResets}</b> · MUNDO <b>${worldMode.toUpperCase()}</b> · SOFTBODY <b>${SB.on?'ON':'OFF'}</b>`;
 }
 function bindMenuUI(){
   const $ = id => document.getElementById(id);
@@ -2576,7 +2743,6 @@ function bindMenuUI(){
   $('up-on').addEventListener('change', e=>{ up.on = e.target.checked; cfg.up = up; saveCfg(); applyResolution(); updateMenuUI(); });
   $('up-scale').addEventListener('input', e=>{ up.scale = sClamp(+e.target.value/100, 0.3, 1, 0.5); cfg.up = up; saveCfg(); applyResolution(); updateMenuUI(); });
   $('up-pix').addEventListener('change', e=>{ up.pix = e.target.checked; cfg.up = up; saveCfg(); applyResolution(); });
-  // multiplayer
   $('m-name').addEventListener('change', e=>{
     cfg.name = sanitizeName(e.target.value);
     e.target.value = cfg.name;
@@ -2595,7 +2761,6 @@ function bindMenuUI(){
     netJoin(code);
   });
   $('m-leave').addEventListener('click', ()=>netLeave(false));
-  // experimental softbody
   $('sb-on').addEventListener('change', e=>{
     if (e.target.checked && net){
       e.target.checked = false;
@@ -2609,16 +2774,16 @@ function bindMenuUI(){
   $('sb-self').addEventListener('change', e=>{ cfg.soft.selfcol = e.target.checked; saveCfg(); updateMenuUI(); });
   $('sb-ccd').addEventListener('change', e=>{ cfg.soft.ccd = e.target.checked; saveCfg(); updateMenuUI(); });
   $('sb-rays').addEventListener('change', e=>{
-    cfg.soft.rays = sClamp(Math.round(+e.target.value), 32, 5000, 256);
+    cfg.soft.rays = sClamp(Math.round(+e.target.value), 32, 5000, 128);
     e.target.value = cfg.soft.rays;
+    SB.wall.pend = 0;   // força refresh do muro com a nova quantia
     saveCfg(); updateMenuUI();
   });
   $('sb-hz').addEventListener('change', e=>{
-    cfg.soft.hz = sClamp(Math.round(+e.target.value), 50, 10000, 240);
+    cfg.soft.hz = sClamp(Math.round(+e.target.value), 50, 10000, 120);
     e.target.value = cfg.soft.hz;
     saveCfg(); updateMenuUI();
   });
-  // procedural
   $('m-proc').addEventListener('change', e=>{
     if (net){ e.target.checked = (worldMode==='proc'); toast('SAIA DO SERVIDOR PARA TROCAR DE MUNDO'); return; }
     if (e.target.checked) applyProcWorld(($('m-seed').value || 'x3f-6').slice(0,32).trim() || 'x3f-6');
@@ -2685,7 +2850,14 @@ addEventListener('keydown', e=>{
   }
   if (editorOpen){
     if (e.code==='KeyE' || e.code==='Escape') setEditor(false);
-    else if ((e.code==='Delete' || e.code==='Backspace') && selPart) deletePart(selPart);
+    else if ((e.code==='Delete' || e.code==='Backspace')){
+      if (selX3f){
+        const i = x3fNodes.indexOf(selX3f);
+        if (i >= 0) x3fNodes.splice(i,1);
+        selX3f = null;
+        rebuildX3FPods(); saveCar(); updateEditorUI();
+      } else if (selPart) deletePart(selPart);
+    }
     return;
   }
   if (e.code==='Semicolon' || e.key===';'){ e.preventDefault(); openChat(); return; }
@@ -2794,7 +2966,7 @@ document.addEventListener('visibilitychange', ()=>{
 });
 
 /* ============================================================
-   [13] FÍSICA — bump-stop + barreiras anti-NaN
+   [13] FÍSICA — bump-stop + SHIFT pula + X3F nodes + anti-NaN
 ============================================================ */
 const carQ = new THREE.Quaternion();
 const carUp = new THREE.Vector3(), carFwd = new THREE.Vector3(), carRight = new THREE.Vector3();
@@ -2805,6 +2977,7 @@ const _fw = new THREE.Vector3(), _side = new THREE.Vector3(), _pv = new THREE.Ve
 const _d = new THREE.Vector3(), _q1 = new THREE.Quaternion();
 const _ray = new RAPIER.Ray({x:0,y:0,z:0},{x:0,y:-1,z:0});
 let throttle = 0, reverseMode = false, braking = false, handbrake = false;
+let shiftPrev = false, jumpCd = 0;
 
 function bodySane(){
   const t = body.translation(), q = body.rotation(), lv = body.linvel(), av = body.angvel();
@@ -2945,6 +3118,7 @@ function macLookAhead(dt){
     lookDbg[i].d = endD;
   }
 }
+// X3F — usa os nós do editor (sensor=sente, câmera=vê) ou os 6 fixos
 const sensDbg = Array.from({length:6}, ()=>({ d:3.0, hit:false }));
 let x3fAcc = 0;
 function sampleX3F(){
@@ -2952,22 +3126,35 @@ function sampleX3F(){
   for (const w of wheels) for (const d of w.rayDbg)
     if (d.hit && isF(d.d)){ gNow += d.d; gn++; }
   gNow = gn ? gNow/gn : 0.70;
-  const castDown = (lx, ly, lz, dbg)=>{
-    _o.set(lx,ly,lz).applyQuaternion(carQ).add(carPos);
+  const list = x3fActiveNodes();
+  let sum = 0, cnt = 0;
+  for (const n of list){
+    if (!n.dbg) n.dbg = { d:3.0, hit:false };
+    _o.set(n.p[0], n.p[1], n.p[2]).applyQuaternion(carQ).add(carPos);
     _ray.origin.x=_o.x; _ray.origin.y=_o.y; _ray.origin.z=_o.z;
-    _ray.dir.x=-carUp.x; _ray.dir.y=-carUp.y; _ray.dir.z=-carUp.z;
-    let hit = null;
-    try { hit = world.castRay(_ray, 3.0, true, undefined, undefined, undefined, body); } catch(e){}
-    const d = (hit && isF(hit.toi) && hit.toi >= 0) ? Math.max(hit.toi, 0.02) : 3.0;
-    dbg.d = d; dbg.hit = !!(hit && isF(hit.toi));
-    return d;
-  };
-  const carMean = (castDown(+0.45,-0.15,1.85,sensDbg[0]) + castDown(-0.45,-0.15,1.85,sensDbg[1]))/2;
-  for (let i=0;i<4;i++){
-    const w = wheels[i];
-    const gw = castDown(w.x, -0.10, w.z+0.55, sensDbg[2+i]);
-    w.x3fFeed = sClamp(((carMean + gw)/2 - gNow)*0.55, -0.12, 0.16, 0);
+    if (n.t === 'cam'){
+      // câmera "vê": raio inclinado para frente+baixo (previsão)
+      _ld.copy(carFwd).multiplyScalar(0.85).addScaledVector(carUp, -1).normalize();
+      _ray.dir.x=_ld.x; _ray.dir.y=_ld.y; _ray.dir.z=_ld.z;
+      let hit = null;
+      try { hit = world.castRay(_ray, 3.0, true, undefined, undefined, undefined, body); } catch(e){}
+      const d = (hit && isF(hit.toi) && hit.toi >= 0) ? Math.max(hit.toi, 0.05) : 3.0;
+      n.dbg.d = d; n.dbg.hit = !!(hit && isF(hit.toi));
+      sum += d*0.762;   // converte para equivalente vertical
+      cnt++;
+    } else {
+      // sensor "sente": raio para baixo
+      _ray.dir.x=-carUp.x; _ray.dir.y=-carUp.y; _ray.dir.z=-carUp.z;
+      let hit = null;
+      try { hit = world.castRay(_ray, 3.0, true, undefined, undefined, undefined, body); } catch(e){}
+      const d = (hit && isF(hit.toi) && hit.toi >= 0) ? Math.max(hit.toi, 0.02) : 3.0;
+      n.dbg.d = d; n.dbg.hit = !!(hit && isF(hit.toi));
+      sum += d; cnt++;
+    }
   }
+  const mean = cnt ? sum/cnt : gNow;
+  const feed = sClamp((mean - gNow)*0.55, -0.12, 0.16, 0);
+  for (const w of wheels) w.x3fFeed = feed;
 }
 
 let totalHits = 0;
@@ -2985,6 +3172,23 @@ function physicsStep(dt){
   const maxSteer = 0.62 - 0.34*Math.min(Math.abs(fwdSpeed)/24, 1);
   steerState += clamp(steerIn*maxSteer - steerState, -4.6*dt, 4.6*dt);
   for (const w of wheels) w.steer = w.front ? steerState : 0;
+
+  // SHIFT = pulo (borda + cooldown, ≥2 rodas no chão)
+  jumpCd -= dt;
+  const sh = keys.has('ShiftLeft') || keys.has('ShiftRight');
+  if (sh && !shiftPrev && jumpCd <= 0){
+    let g = 0;
+    for (const w of wheels) if (w.grounded && w.comp > 0.03) g++;
+    if (g >= 2){
+      let mRaw = NaN;
+      try { mRaw = body.mass(); } catch(e){}
+      const m = (isF(mRaw) && mRaw > 1) ? mRaw : 760;
+      _f.copy(carUp).multiplyScalar(m*6.2);
+      if (finVec(_f)) body.applyImpulse(_f, true);
+      jumpCd = 0.5;
+    }
+  }
+  shiftPrev = sh;
 
   if (suspType==='lowrider'){
     for (let i=0;i<4;i++){
@@ -3034,7 +3238,7 @@ function updateWheelVisual(w, dt){
   const v = w.v;
   const bjl = _v1.set(w.x - w.sx*0.06, yW-0.10, w.z);
   const bju = _v2.set(w.x - w.sx*0.10, yW+0.27, w.z);
-  if (v.type==='double' || v.type==='single' || v.type==='x3f' || v.type==='lowrider'){
+  if (v.type==='double' || v.type==='single' || suspType==='x3f' || suspType==='lowrider'){
     placeCyl(v.lF.m, v.lF.p, bjl, 0.026);
     placeCyl(v.lR.m, v.lR.p, bjl, 0.026);
     if (v.uF){ placeCyl(v.uF.m, v.uF.p, bju, 0.024); placeCyl(v.uR.m, v.uR.p, bju, 0.024); }
@@ -3090,18 +3294,35 @@ function updateVisuals(dt){
     ptGeo.setDrawRange(0, qi/3);
     ptGeo.attributes.position.needsUpdate = true;
   }
-  sensLines.visible = raysVisible && suspType==='x3f';
-  if (sensLines.visible){
+  // linhas dos nós X3F (sensor ciano = down · câmera âmbar = diagonal)
+  xnLines.visible = raysVisible && suspType==='x3f';
+  if (xnLines.visible){
+    const list = x3fActiveNodes();
     let i = 0;
-    for (let sIdx=0;sIdx<6;sIdx++){
-      const L = SENS_LOCAL[sIdx];
-      _v4.set(L[0],L[1],L[2]).applyQuaternion(carQ).add(carPos);
-      const d = Math.max(sensDbg[sIdx].d, 0.02);
-      _v5.copy(_v4).addScaledVector(carUp, -d);
-      sensPos[i++]=_v4.x; sensPos[i++]=_v4.y; sensPos[i++]=_v4.z;
-      sensPos[i++]=_v5.x; sensPos[i++]=_v5.y; sensPos[i++]=_v5.z;
+    for (let sIdx=0; sIdx<Math.min(list.length,16); sIdx++){
+      const n = list[sIdx];
+      if (!n.dbg) n.dbg = { d:3.0, hit:false };
+      _v4.set(n.p[0], n.p[1], n.p[2]).applyQuaternion(carQ).add(carPos);
+      if (n.t === 'cam'){
+        _v5.copy(carFwd).multiplyScalar(0.85).addScaledVector(carUp, -1).normalize();
+        const d = Math.max(n.dbg.d, 0.05);
+        _v6.copy(_v4).addScaledVector(_v5, d);
+      } else {
+        const d = Math.max(n.dbg.d, 0.02);
+        _v6.copy(_v4).addScaledVector(carUp, -d);
+      }
+      xnPos[i*6]=_v4.x; xnPos[i*6+1]=_v4.y; xnPos[i*6+2]=_v4.z;
+      xnPos[i*6+3]=_v6.x; xnPos[i*6+4]=_v6.y; xnPos[i*6+5]=_v6.z;
+      const cam = n.t === 'cam';
+      const r = cam?1.0:0.21, g = cam?0.63:0.88, b = cam?0.24:0.78;
+      for (let k2=0;k2<2;k2++){
+        xnCol[i*6+k2*3]=r; xnCol[i*6+k2*3+1]=g; xnCol[i*6+k2*3+2]=b;
+      }
+      i++;
     }
-    sensGeo.attributes.position.needsUpdate = true;
+    xnGeo.setDrawRange(0, i*2);
+    xnGeo.attributes.position.needsUpdate = true;
+    xnGeo.attributes.color.needsUpdate = true;
   }
   lookLines.visible = raysVisible && suspType==='mac';
   if (lookLines.visible){
@@ -3253,9 +3474,9 @@ function frame(){
 
   netUpdate(dt);
   syncBody();
-  softUpdate(dt);            // integração do softbody na taxa configurada
+  softUpdate(dt);
   updateVisuals(dt);
-  sbVisual();                // malha deformável da casca
+  sbVisual();
   updateCamera(dt);
   cullPass(now);
   renderer.render(scene, camera);
