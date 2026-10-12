@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WB-6 — Chassi Raycast · Double Wishbone</title>
+<title>WB-6 — Chassi Raycast · Low-End</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --ink:#ece7db; --dim:#9a948a; --panel:rgba(20,19,16,.88);
+    --ink:#ece7db; --dim:#9a948a; --panel:rgba(20,19,16,.9);
     --line:#38342c; --accent:#e5a13c; --hot:#e06c50;
   }
   *{margin:0;padding:0;box-sizing:border-box}
@@ -22,8 +22,7 @@
     flex-direction:column;align-items:center;justify-content:center;gap:16px;
     transition:opacity .55s ease}
   #boot.done{opacity:0;pointer-events:none}
-  .boot-title{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:30px;
-    letter-spacing:.16em}
+  .boot-title{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:30px;letter-spacing:.16em}
   .boot-title b{color:var(--accent);font-weight:700}
   .boot-sub{font-size:10px;letter-spacing:.34em;color:var(--dim)}
   .boot-bar{width:220px;height:2px;background:#2b2823;position:relative;overflow:hidden;margin-top:8px}
@@ -37,17 +36,16 @@
   #hud{position:fixed;inset:0;z-index:10;pointer-events:none}
   .panel{position:absolute;background:var(--panel);border:1px solid var(--line);padding:12px 14px}
   .p-title{top:18px;left:18px}
-  .p-title h1{font-family:'Space Grotesk',sans-serif;font-size:20px;font-weight:700;
-    letter-spacing:.14em;line-height:1}
+  .p-title h1{font-family:'Space Grotesk',sans-serif;font-size:20px;font-weight:700;letter-spacing:.14em;line-height:1}
   .p-title h1 b{color:var(--accent)}
-  .p-title .sub{margin-top:7px;font-size:9.5px;letter-spacing:.22em;color:var(--dim)}
+  .p-title .sub{margin-top:7px;font-size:9.5px;letter-spacing:.2em;color:var(--dim)}
   .p-title .chips{margin-top:10px;display:flex;gap:6px}
   .chip{font-size:9px;letter-spacing:.14em;padding:3px 7px;border:1px solid var(--line);color:var(--dim)}
   .chip.on{color:#151410;background:var(--accent);border-color:var(--accent)}
 
   .p-speed{top:18px;right:18px;text-align:right;min-width:158px}
   .spd-row{display:flex;align-items:baseline;justify-content:flex-end;gap:7px}
-  #spd{font-size:38px;font-weight:600;letter-spacing:.02em;line-height:1}
+  #spd{font-size:38px;font-weight:600;line-height:1}
   .spd-unit{font-size:10px;color:var(--dim);letter-spacing:.18em}
   .gear-row{margin-top:8px;display:flex;justify-content:space-between;align-items:center;
     border-top:1px solid var(--line);padding-top:7px}
@@ -72,13 +70,59 @@
     padding:0 4px;margin-right:6px;color:var(--ink);font-size:9.5px}
   .p-keys .row{display:flex;justify-content:space-between;gap:18px}
   .p-keys .row span:last-child{color:var(--ink)}
+
+  /* stats strip */
+  #stats{position:absolute;bottom:18px;left:50%;transform:translateX(-50%);
+    background:var(--panel);border:1px solid var(--line);padding:6px 12px;
+    font-size:9px;letter-spacing:.14em;color:var(--dim);white-space:nowrap}
+  #stats b{color:var(--ink);font-weight:600}
+
+  /* ---------- menu de opções (P) ---------- */
+  #menu{position:fixed;inset:0;z-index:50;display:none;align-items:center;justify-content:center;
+    background:rgba(10,9,8,.55)}
+  #menu.open{display:flex}
+  .m-panel{width:min(440px,94vw);max-height:92vh;overflow:auto;background:var(--panel);
+    border:1px solid var(--line);padding:16px 18px 14px;pointer-events:auto}
+  .m-head{display:flex;justify-content:space-between;align-items:center;
+    border-bottom:1px solid var(--line);padding-bottom:10px;margin-bottom:12px}
+  .m-head b{font-family:'Space Grotesk',sans-serif;letter-spacing:.14em;font-size:15px}
+  .m-pause{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--accent);
+    letter-spacing:.18em;font-weight:400}
+  .m-sec{margin-bottom:15px}
+  .m-sec.last{margin-bottom:2px}
+  .m-label{font-size:9px;letter-spacing:.22em;color:var(--dim);margin-bottom:8px}
+  .m-note{font-size:9.5px;color:var(--dim);letter-spacing:.06em;line-height:1.8}
+  .m-note b{color:var(--ink);font-weight:600}
+  .preset-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+  .pbtn{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.1em;
+    padding:8px 4px;background:#191813;border:1px solid var(--line);color:var(--dim);cursor:pointer}
+  .pbtn:hover{color:var(--ink);border-color:#4a463d}
+  .pbtn.on{background:var(--accent);border-color:var(--accent);color:#151410;font-weight:600}
+  #m-pdesc{font-size:9.5px;color:var(--dim);margin-top:7px;letter-spacing:.05em;min-height:12px}
+  .row-line{display:flex;justify-content:space-between;align-items:center;
+    font-size:10.5px;padding:5px 0;gap:10px}
+  .row-line b{color:var(--accent)}
+  .mbtn{font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.12em;
+    padding:6px 10px;background:#191813;border:1px solid var(--line);color:var(--ink);cursor:pointer}
+  .mbtn:hover{border-color:var(--accent);color:var(--accent)}
+  .mbtn.warn:hover{border-color:var(--hot);color:var(--hot)}
+  .m-btnrow{display:flex;gap:8px;margin-top:8px}
+  .sw{cursor:pointer;display:inline-flex}
+  .sw input{display:none}
+  .sw i{display:inline-block;width:34px;height:18px;border:1px solid var(--line);
+    background:#191813;position:relative;transition:.15s}
+  .sw i::after{content:'';position:absolute;top:2px;left:2px;width:12px;height:12px;
+    background:#57534a;transition:.15s}
+  .sw input:checked + i{background:var(--accent);border-color:var(--accent)}
+  .sw input:checked + i::after{left:18px;background:#151410}
+  input[type=range]{width:140px;accent-color:var(--accent)}
 </style>
 </head>
 <body>
 
 <div id="boot">
   <div class="boot-title">WB<b>—</b>6</div>
-  <div class="boot-sub">CHASSI RAYCAST · DOUBLE WISHBONE</div>
+  <div class="boot-sub">CHASSI RAYCAST · LOW-END · CULLING</div>
   <div class="boot-bar"></div>
   <div id="boot-msg">carregando módulos…</div>
 </div>
@@ -86,8 +130,9 @@
 <div id="hud">
   <div class="panel p-title">
     <h1>WB<b>—6</b> CHASSI</h1>
-    <div class="sub">SUSPENSÃO DOUBLE WISHBONE · 4 RODAS × 6 RAYS · RAPIER</div>
+    <div class="sub">SUSPENSÃO DOUBLE WISHBONE · 4×6 RAYS · RAPIER</div>
     <div class="chips">
+      <span class="chip on" id="chip-preset">POTATO</span>
       <span class="chip on" id="chip-lights">FARÓIS</span>
       <span class="chip on" id="chip-rays">DEBUG RAYS</span>
     </div>
@@ -100,12 +145,62 @@
     <div class="tel-head">TELEMETRIA DE SUSPENSÃO — CARGA / COMPRESSÃO</div>
     <div class="tel-grid" id="tel-grid"></div>
   </div>
+  <div id="stats">
+    <b id="st-fps">60</b> FPS · <b id="st-draw">0</b> DRAWS · <b id="st-tri">0</b> TRIS ·
+    CULL <b id="st-cull">0F/0O</b> · ODO <b id="st-odo">0 m</b>
+  </div>
   <div class="panel p-keys">
     <div class="row"><span><span class="k">W</span><span class="k">S</span></span><span>acelerar · freio / ré</span></div>
     <div class="row"><span><span class="k">A</span><span class="k">D</span></span><span>direção</span></div>
     <div class="row"><span><span class="k">ESPAÇO</span></span><span>freio de mão (drift)</span></div>
     <div class="row"><span><span class="k">L</span><span class="k">G</span><span class="k">R</span></span><span>faróis · rays · reset</span></div>
+    <div class="row"><span><span class="k">P</span></span><span>opções · presets · upscaling</span></div>
     <div class="row"><span><span class="k">MOUSE</span></span><span>orbitar câmera</span></div>
+  </div>
+</div>
+
+<div id="menu">
+  <div class="m-panel">
+    <div class="m-head">
+      <b>OPÇÕES <span class="m-pause">· FÍSICA PAUSADA</span></b>
+      <button class="mbtn" id="m-close">FECHAR [P]</button>
+    </div>
+
+    <div class="m-sec">
+      <div class="m-label">PRESET DE GRÁFICOS</div>
+      <div class="preset-grid">
+        <button type="button" class="pbtn" data-preset="potato">POTATO</button>
+        <button type="button" class="pbtn" data-preset="baixo">BAIXO</button>
+        <button type="button" class="pbtn" data-preset="medio">MÉDIO</button>
+        <button type="button" class="pbtn" data-preset="alto">ALTO</button>
+      </div>
+      <div id="m-pdesc"></div>
+    </div>
+
+    <div class="m-sec">
+      <div class="m-label">UPSCALING — RENDERIZAR EM RESOLUÇÃO MENOR E AMPLIAR</div>
+      <div class="row-line"><span>upscaling ativo (sobrepõe o preset)</span>
+        <label class="sw"><input type="checkbox" id="up-on"><i></i></label></div>
+      <div class="row-line"><span>escala interna <b id="up-pct">50%</b></span>
+        <input type="range" id="up-scale" min="30" max="100" step="5" value="50"></div>
+      <div class="row-line"><span>pixels nítidos (nearest)</span>
+        <label class="sw"><input type="checkbox" id="up-pix"><i></i></label></div>
+      <div id="up-res" class="m-note"></div>
+    </div>
+
+    <div class="m-sec">
+      <div class="m-label">MEMÓRIA FÍSICA (LOCALSTORAGE) — MUNDO + CONFIG</div>
+      <div id="m-mem" class="m-note"></div>
+      <div class="m-btnrow">
+        <button class="mbtn" id="m-save">SALVAR AGORA</button>
+        <button class="mbtn warn" id="m-wipe">APAGAR E REINICIAR</button>
+      </div>
+    </div>
+
+    <div class="m-sec last">
+      <div class="m-label">TELEMETRIA DO RENDER</div>
+      <div id="m-stats" class="m-note"></div>
+    </div>
   </div>
 </div>
 
@@ -113,7 +208,7 @@
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
 
 /* ============================================================
-   [1] BOOT — carrega o Rapier (build ES, WASM embutido)
+   [1] BOOT — Rapier (ES, WASM embutido) + config persistida
 ============================================================ */
 const bootEl = document.getElementById('boot');
 const bootMsg = document.getElementById('boot-msg');
@@ -130,86 +225,161 @@ try {
   throw err;
 }
 
+const LS_CFG = 'wb6.cfg.v1', LS_STATE = 'wb6.state.v1';
+let cfg = { preset: 'potato', lights: true, rays: true, up: { on: true, scale: 0.5, pix: false } };
+try { const s = localStorage.getItem(LS_CFG); if (s) cfg = Object.assign(cfg, JSON.parse(s)); } catch (e) {}
+
+function saveCfg() {
+  try { localStorage.setItem(LS_CFG, JSON.stringify(cfg)); } catch (e) {}
+}
+
 const clamp = THREE.MathUtils.clamp;
 const UP = new THREE.Vector3(0, 1, 0);
 
 /* ============================================================
-   [2] RENDERER / CENA / LUZES
+   [2] RENDERER / CENA / LUZES — baseline low-end
+   antialias OFF · pixelRatio 1 · sombras OFF · env lazy
 ============================================================ */
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+const renderer = new THREE.WebGLRenderer({ antialias: false });
+renderer.setPixelRatio(1);
 renderer.setSize(innerWidth, innerHeight);
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.05;
+renderer.shadowMap.enabled = false;              // sem sombras por padrão
+renderer.toneMapping = THREE.NoToneMapping;
 renderer.domElement.style.touchAction = 'none';
 document.body.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xd8d6cf);
-scene.fog = new THREE.Fog(0xd8d6cf, 35, 150);
+scene.fog = new THREE.Fog(0xd8d6cf, 6, 55);      // fog curto: também limita o draw distance
 
 const camera = new THREE.PerspectiveCamera(58, innerWidth / innerHeight, 0.1, 400);
 camera.position.set(0, 3.4, -9);
 
-// Ambiente de estúdio procedural (softboxes) — dá vida ao vidro e ao metal
-{
+// luz barata que funciona sem env map: hemisférica + direcional
+const hemi = new THREE.HemisphereLight(0xe8e6df, 0x7d786c, 1.05);
+const sun = new THREE.DirectionalLight(0xfff3de, 1.5);
+sun.castShadow = false;
+sun.shadow.mapSize.set(1024, 1024);
+sun.shadow.camera.left = -16; sun.shadow.camera.right = 16;
+sun.shadow.camera.top = 16; sun.shadow.camera.bottom = -16;
+sun.shadow.camera.near = 1; sun.shadow.camera.far = 70;
+sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.02;
+scene.add(hemi, sun, sun.target);
+
+// env map de estúdio — só compilado se o preset pedir (lazy + cache)
+let envTex = null;
+function buildEnv() {
   const env = new THREE.Scene();
-  env.add(new THREE.Mesh(
-    new THREE.SphereGeometry(30, 16, 12),
-    new THREE.MeshBasicMaterial({ color: new THREE.Color(0.42, 0.42, 0.40), side: THREE.BackSide })
-  ));
+  env.add(new THREE.Mesh(new THREE.SphereGeometry(30, 16, 12),
+    new THREE.MeshBasicMaterial({ color: new THREE.Color(0.42, 0.42, 0.40), side: THREE.BackSide })));
   const box = (w, h, c, x, y, z, rx, ry) => {
     const p = new THREE.Mesh(new THREE.PlaneGeometry(w, h),
       new THREE.MeshBasicMaterial({ color: c, side: THREE.DoubleSide }));
     p.position.set(x, y, z); p.rotation.set(rx, ry, 0); env.add(p);
   };
-  box(14, 14, new THREE.Color(5, 5, 4.6), 0, 12, 0, Math.PI / 2, 0);       // teto
-  box(20, 8, new THREE.Color(2.6, 2.4, 2.0), -16, 4, 0, 0, Math.PI / 2);   // lateral
+  box(14, 14, new THREE.Color(5, 5, 4.6), 0, 12, 0, Math.PI / 2, 0);
+  box(20, 8, new THREE.Color(2.6, 2.4, 2.0), -16, 4, 0, 0, Math.PI / 2);
   box(20, 8, new THREE.Color(1.6, 1.7, 1.9), 16, 4, 0, 0, -Math.PI / 2);
   const pmrem = new THREE.PMREMGenerator(renderer);
-  scene.environment = pmrem.fromScene(env, 0.04).texture;
+  const t = pmrem.fromScene(env, 0.04).texture;
   pmrem.dispose();
+  return t;
 }
 
-const sun = new THREE.DirectionalLight(0xfff3de, 2.3);
-sun.castShadow = true;
-sun.shadow.mapSize.set(2048, 2048);
-sun.shadow.camera.left = -16; sun.shadow.camera.right = 16;
-sun.shadow.camera.top = 16; sun.shadow.camera.bottom = -16;
-sun.shadow.camera.near = 1; sun.shadow.camera.far = 70;
-sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.02;
-scene.add(sun, sun.target);
+/* ============================================================
+   [3] SISTEMA DE CULLING — frustum + distância + oclusão
+   - frustum: sphere-vs-frustum manual por objeto registrado
+   - distância: some além do fog (draw distance efetivo)
+   - oclusão: raycast Rapier câmera→objeto, round-robin
+     (3 testes/frame) com histerese de 2 votos p/ esconder
+============================================================ */
+const cullables = [], occludees = [];
+function regStatic(obj, occludee = false) {
+  obj.updateMatrixWorld(true);
+  const bs = new THREE.Box3().setFromObject(obj).getBoundingSphere(new THREE.Sphere());
+  bs.radius += 0.15;
+  const e = { obj, radius: bs.radius, occludee, body: null, occ: false, votes: 0, _fv: true,
+    getCenter: v => v.copy(bs.center), baseVis: null };
+  cullables.push(e); if (occludee) occludees.push(e);
+}
+function regDyn(obj, center, radius, body = null, occludee = false, baseVis = null) {
+  const getCenter = typeof center === 'function' ? center : v => v.copy(center).add(obj.position);
+  const e = { obj, radius, occludee, body, occ: false, votes: 0, _fv: true, getCenter, baseVis };
+  cullables.push(e); if (occludee) occludees.push(e);
+}
+
+const _frustum = new THREE.Frustum(), _pm = new THREE.Matrix4(), _cs = new THREE.Sphere();
+const _oc = new THREE.Vector3(), _od = new THREE.Vector3();
+let statF = 0, statO = 0, statV = 0, occIdx = 0, cullFar = 65;
+
+function testOcclusion(c) {
+  c.getCenter(_oc);
+  const d = _oc.distanceTo(camera.position);
+  if (d < c.radius + 0.6) { c.occ = false; c.votes = 0; return; }   // perto demais: visível
+  _od.subVectors(_oc, camera.position).normalize();
+  _rayOcc.origin.x = camera.position.x; _rayOcc.origin.y = camera.position.y; _rayOcc.origin.z = camera.position.z;
+  _rayOcc.dir.x = _od.x; _rayOcc.dir.y = _od.y; _rayOcc.dir.z = _od.z;
+  const maxToi = Math.max(d - c.radius * 0.5, 0.1);
+  const hit = world.castRay(_rayOcc, maxToi, true, undefined, undefined, undefined, c.body || undefined);
+  if (hit) { c.votes++; if (c.votes >= 2) c.occ = true; }           // histerese anti-flicker
+  else { c.occ = false; c.votes = 0; }
+}
+
+function cullPass() {
+  camera.updateMatrixWorld();
+  _pm.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+  _frustum.setFromProjectionMatrix(_pm);
+  statF = 0; statO = 0;
+  for (const c of cullables) {
+    c.getCenter(_cs.center); _cs.radius = c.radius;
+    let fv = true;
+    if (_cs.center.distanceTo(camera.position) - c.radius > cullFar) fv = false;      // distância
+    else if (!_frustum.intersectsSphere(_cs)) fv = false;                             // frustum
+    c._fv = fv;
+    let vis = fv && !c.occ && (!c.baseVis || c.baseVis());
+    if (!fv) statF++; else if (c.occ) statO++;
+    if (c.obj.visible !== vis) c.obj.visible = vis;
+  }
+  // round-robin: 3 raycasts de oclusão por frame, só nos visíveis pelo frustum
+  const n = occludees.length;
+  if (n > 0) {
+    let tested = 0, att = 0;
+    while (tested < 3 && att < n) {
+      const c = occludees[(occIdx + att) % n];
+      if (c._fv) { testOcclusion(c); tested++; }
+      att++;
+    }
+    occIdx = (occIdx + att) % n;
+  }
+  statV = cullables.length - statF - statO;
+}
 
 /* ============================================================
-   [3] MUNDO FÍSICO + PISTA DE TESTES
+   [4] MUNDO FÍSICO + PISTA DE TESTES
 ============================================================ */
 const FIXED = 1 / 60;
 const world = new RAPIER.World({ x: 0, y: -19, z: 0 });
 world.timestep = FIXED;
 
-// piso
 world.createCollider(RAPIER.ColliderDesc.cuboid(120, 0.5, 120).setTranslation(0, -0.5, 0).setFriction(1.0));
 
 // piso visual — grid técnico em canvas
+let floorTex;
 {
   const cv = document.createElement('canvas'); cv.width = cv.height = 256;
   const g = cv.getContext('2d');
   g.fillStyle = '#d5d2c9'; g.fillRect(0, 0, 256, 256);
-  g.strokeStyle = '#c6c2b6'; g.lineWidth = 2;
-  g.strokeRect(1, 1, 254, 254);
+  g.strokeStyle = '#c6c2b6'; g.lineWidth = 2; g.strokeRect(1, 1, 254, 254);
   g.strokeStyle = '#cecabf'; g.lineWidth = 1;
   g.beginPath(); g.moveTo(128, 0); g.lineTo(128, 256); g.moveTo(0, 128); g.lineTo(256, 128); g.stroke();
-  const tex = new THREE.CanvasTexture(cv);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-  tex.repeat.set(48, 48);
-  tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  floorTex = new THREE.CanvasTexture(cv);
+  floorTex.colorSpace = THREE.SRGBColorSpace;
+  floorTex.wrapS = floorTex.wrapT = THREE.RepeatWrapping;
+  floorTex.repeat.set(48, 48);
+  floorTex.anisotropy = 1; // controlado por preset
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(240, 240),
-    new THREE.MeshStandardMaterial({ map: tex, roughness: 0.95, metalness: 0 }));
+    new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.95, metalness: 0 }));
   floor.rotation.x = -Math.PI / 2;
-  floor.receiveShadow = true;
   scene.add(floor);
 }
 
@@ -222,34 +392,32 @@ function addBlock(x, y, z, hx, hy, hz, ax = 0) {
   const m = new THREE.Mesh(new THREE.BoxGeometry(hx * 2, hy * 2, hz * 2), blockMat);
   m.position.set(x, y, z);
   if (ax) m.quaternion.setFromAxisAngle(new THREE.Vector3(1, 0, 0), ax);
-  m.castShadow = m.receiveShadow = true;
   scene.add(m);
+  regStatic(m, true); // cullable + oclusível
+  return m;
 }
-// rampa (fundo) + rampa espelhada (longe)
 addBlock(0, 0.44, -9.5, 1.7, 0.09, 2.7, 0.21);
 addBlock(0, 0.44, 15.5, 1.7, 0.09, 2.7, -0.21);
-// "lombada" — série de degraus para fazer os wishbones dançarem
 for (let i = 0; i < 8; i++) addBlock(0, 0.05, 3.2 + i * 1.35, 1.5, 0.05, 0.30);
-// degraus de altura crescente
 addBlock(7.5, 0.16, -3, 1.3, 0.16, 1.3);
 addBlock(10.8, 0.275, -3, 1.3, 0.275, 1.3);
 
 // caixotes empurráveis
 const crateMat = new THREE.MeshStandardMaterial({ color: 0xa98a5f, roughness: 0.8 });
+const crateSpawns = [[2.6, 0.26, 2.2, 0.52], [3.3, 0.26, 2.9, 0.52], [2.9, 0.80, 2.5, 0.52]];
 const crates = [];
-function addCrate(x, y, z, s) {
+for (const [x, y, z, s] of crateSpawns) {
   const body = world.createRigidBody(RAPIER.RigidBodyDesc.dynamic()
     .setTranslation(x, y, z).setAngularDamping(0.3).setLinearDamping(0.1));
   world.createCollider(RAPIER.ColliderDesc.cuboid(s / 2, s / 2, s / 2).setMass(7).setFriction(0.7), body);
   const mesh = new THREE.Mesh(new THREE.BoxGeometry(s, s, s), crateMat);
-  mesh.castShadow = mesh.receiveShadow = true;
   scene.add(mesh);
-  crates.push({ body, mesh });
+  crates.push({ body, mesh, s, spawn: [x, y, z] });
+  regDyn(mesh, new THREE.Vector3(0, 0, 0), s * 0.9, body, true); // oclusível dinâmico
 }
-addCrate(2.6, 0.26, 2.2, 0.52); addCrate(3.3, 0.26, 2.9, 0.52); addCrate(2.9, 0.80, 2.5, 0.52);
 
 /* ============================================================
-   [4] O CARRO — bloco + cápsula de vidro + faróis
+   [5] O CARRO — bloco + cápsula de vidro + faróis
 ============================================================ */
 const bodyMat   = new THREE.MeshStandardMaterial({ color: 0xd97a2b, roughness: 0.42, metalness: 0.08 });
 const skirtMat  = new THREE.MeshStandardMaterial({ color: 0x24221f, roughness: 0.55, metalness: 0.35 });
@@ -260,10 +428,13 @@ const tireMat   = new THREE.MeshStandardMaterial({ color: 0x161514, roughness: 0
 const hubMat    = new THREE.MeshStandardMaterial({ color: 0xd8d1c0, roughness: 0.38, metalness: 0.55 });
 const darkMat   = new THREE.MeshStandardMaterial({ color: 0x211f1c, roughness: 0.6,  metalness: 0.4 });
 const seatMat   = new THREE.MeshStandardMaterial({ color: 0x2e2b27, roughness: 0.75 });
-const glassMat  = new THREE.MeshPhysicalMaterial({
+const glassPhysical = new THREE.MeshPhysicalMaterial({
   color: 0xffffff, roughness: 0.07, metalness: 0, transmission: 1, thickness: 0.4,
   ior: 1.45, clearcoat: 1, clearcoatRoughness: 0.06, envMapIntensity: 1.1,
   attenuationColor: new THREE.Color(0xbfe0d8), attenuationDistance: 2.5
+});
+const glassCheap = new THREE.MeshStandardMaterial({ // substituto barato p/ potato/baixo
+  color: 0xbfd8d2, roughness: 0.15, metalness: 0, transparent: true, opacity: 0.35
 });
 const lampMat   = new THREE.MeshStandardMaterial({ color: 0x2a2620, emissive: 0xffe3ae, emissiveIntensity: 3.4 });
 const brakeMat  = new THREE.MeshStandardMaterial({ color: 0x30100c, emissive: 0xff2d18, emissiveIntensity: 0.25 });
@@ -274,27 +445,22 @@ scene.add(chassis);
 function cAdd(mesh) { mesh.castShadow = true; chassis.add(mesh); return mesh; }
 const box = (w, h, d) => new THREE.BoxGeometry(w, h, d);
 
-// bloco (casco superior + saia inferior estreita, para deixar a suspensão visível)
 cAdd(new THREE.Mesh(box(1.60, 0.42, 3.40), bodyMat)).position.y = 0.13;
 cAdd(new THREE.Mesh(box(1.30, 0.26, 3.20), skirtMat)).position.y = -0.21;
-// estribos, para-choques
 for (const s of [1, -1]) {
   cAdd(new THREE.Mesh(box(0.10, 0.08, 2.0), darkMat)).position.set(s * 0.69, -0.24, 0);
 }
 cAdd(new THREE.Mesh(box(1.70, 0.16, 0.14), darkMat)).position.set(0, -0.10, 1.70);
 cAdd(new THREE.Mesh(box(1.70, 0.16, 0.14), darkMat)).position.set(0, -0.10, -1.70);
-// torres de suspensão (coilover mounts)
 for (const sx of [1, -1]) for (const z of [1.20, -1.10]) {
   const t = cAdd(new THREE.Mesh(box(0.16, 0.32, 0.30), skirtMat));
   t.position.set(sx * 0.86, 0.06, z + 0.05);
 }
-// cápsula de vidro + aro
-{
-  const cap = new THREE.Mesh(new THREE.CapsuleGeometry(0.52, 0.18, 8, 28), glassMat);
-  cap.position.y = 0.69; chassis.add(cap); // sem sombra: vidro
-  const rim = new THREE.Mesh(new THREE.TorusGeometry(0.45, 0.035, 10, 40), darkMat);
-  rim.rotation.x = Math.PI / 2; rim.position.y = 0.345; rim.castShadow = true; chassis.add(rim);
-}
+// cápsula de vidro (material trocado por preset) + aro
+const glassMesh = new THREE.Mesh(new THREE.CapsuleGeometry(0.52, 0.18, 8, 28), glassCheap);
+glassMesh.position.y = 0.69; chassis.add(glassMesh);
+const rim = new THREE.Mesh(new THREE.TorusGeometry(0.45, 0.035, 10, 40), darkMat);
+rim.rotation.x = Math.PI / 2; rim.position.y = 0.345; rim.castShadow = true; chassis.add(rim);
 // interior: banco, piloto, volante funcional
 {
   const seatB = cAdd(new THREE.Mesh(box(0.44, 0.10, 0.42), seatMat)); seatB.position.set(0.28, 0.42, -0.24);
@@ -314,7 +480,8 @@ for (const sx of [1, -1]) for (const z of [1.20, -1.10]) {
   var swCol = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.22, 8), darkMat);
   swCol.rotation.x = Math.PI / 2 - 0.5; swCol.position.set(0.28, 0.74, 0.13); chassis.add(swCol);
 }
-// iluminação: faróis, lanterna de freio, luz de ré
+// iluminação: faróis (spotlights reais só em médio/alto), freio e ré
+let spotL = null, spotR = null;
 for (const s of [1, -1]) {
   const bezel = cAdd(new THREE.Mesh(box(0.36, 0.19, 0.03), darkMat)); bezel.position.set(s * 0.52, 0.06, 1.705);
   const lamp = cAdd(new THREE.Mesh(box(0.30, 0.13, 0.05), lampMat)); lamp.position.set(s * 0.52, 0.06, 1.715);
@@ -324,11 +491,12 @@ for (const s of [1, -1]) {
   spot.position.set(s * 0.52, 0.05, 1.66);
   spot.target.position.set(s * 0.95, -1.5, 8.0);
   chassis.add(spot, spot.target);
-  if (s === 1) var spotL = spot; else var spotR = spot;
+  if (s === 1) spotL = spot; else spotR = spot;
 }
+regDyn(chassis, new THREE.Vector3(0, 0.3, 0), 2.2); // cullable (nunca oclusível)
 
 /* ============================================================
-   [5] FÍSICA DO CHASSI
+   [6] FÍSICA DO CHASSI
 ============================================================ */
 const body = world.createRigidBody(RAPIER.RigidBodyDesc.dynamic()
   .setTranslation(0, 1.5, 0)
@@ -343,9 +511,8 @@ const CFG = {
   latC: 2400, brakeC: 1600, brakeMax: 1700,
   driveF: 1150, rrMax: 130
 };
-const COM_LOCAL = new THREE.Vector3(0, -0.125, 0); // bloco + lastro
+const COM_LOCAL = new THREE.Vector3(0, -0.125, 0);
 
-// 6 rays por roda: centro + 5 em círculo sob o pneu
 const RAY_OFFSETS = [{ x: 0, z: 0 }];
 for (let i = 0; i < 5; i++) {
   const a = i / 5 * Math.PI * 2 + 0.6;
@@ -353,9 +520,9 @@ for (let i = 0; i < 5; i++) {
 }
 
 /* ============================================================
-   [6] ASSEMBLY VISUAL DA RODA (wishbones articulados)
+   [7] ASSEMBLY VISUAL DA RODA (wishbones articulados)
 ============================================================ */
-const cylGeo = new THREE.CylinderGeometry(1, 1, 1, 10);   // unit: scale = (raio, comprimento, raio)
+const cylGeo = new THREE.CylinderGeometry(1, 1, 1, 10);
 const bjGeo = new THREE.SphereGeometry(0.055, 12, 10);
 const pickGeo = new THREE.SphereGeometry(0.04, 10, 8);
 const tireGeo = new THREE.CylinderGeometry(CFG.wheelR, CFG.wheelR, CFG.wheelW, 26);
@@ -370,7 +537,6 @@ class HelixCurve extends THREE.Curve {
 }
 const springGeo = new THREE.TubeGeometry(new HelixCurve(), 150, 0.016, 8, false);
 
-// posiciona um cilindro unitário entre dois pontos (no espaço local do pai)
 const _v1 = new THREE.Vector3(), _v2 = new THREE.Vector3();
 function placeCyl(m, a, b, r = 0.026) {
   _v1.subVectors(b, a);
@@ -391,7 +557,6 @@ function buildWheel(x, z, front, sx) {
   for (const px of [0.125, -0.125]) {
     const sp = new THREE.Mesh(spokeGeo, steelMat); sp.position.x = px; spinG.add(sp);
   }
-  // knuckle + eixo + ball joints (fixos no carrier — giram com o esterço)
   const knuckle = new THREE.Mesh(cylGeo, armMat);
   placeCyl(knuckle, _v1.set(-sx * 0.10, 0.27, 0), _v2.set(-sx * 0.06, -0.10, 0), 0.030);
   steerG.add(knuckle);
@@ -401,22 +566,18 @@ function buildWheel(x, z, front, sx) {
   const bjLo = new THREE.Mesh(bjGeo, steelMat); bjLo.position.set(-sx * 0.06, -0.10, 0); steerG.add(bjLo);
   const bjUp = new THREE.Mesh(bjGeo, steelMat); bjUp.position.set(-sx * 0.10, 0.27, 0); steerG.add(bjUp);
 
-  // braços do wishbone (no frame do chassi — pickups fixos, BJ móvel)
   const arm = (px, py, pz) => { const m = new THREE.Mesh(cylGeo, armMat); m.castShadow = true; frame.add(m); return { m, p: new THREE.Vector3(px, py, pz) }; };
   const lF = arm(sx * 0.45, -0.16, z + 0.40), lR = arm(sx * 0.45, -0.16, z - 0.40);
   const uF = arm(sx * 0.40, 0.18, z + 0.24), uR = arm(sx * 0.40, 0.18, z - 0.24);
 
-  // coilover: mola helicoidal + corpo do amortecedor
   const springG = new THREE.Group(); frame.add(springG);
   const spring = new THREE.Mesh(springGeo, springMat); spring.castShadow = true; springG.add(spring);
   const damper = new THREE.Mesh(cylGeo, darkMat); frame.add(damper);
-  const top = new THREE.Vector3(sx * 0.86, 0.10, z + 0.05); // topo fixo na torre
+  const top = new THREE.Vector3(sx * 0.86, 0.10, z + 0.05);
 
-  // esferas nos pickups (fixas ao chassi)
   for (const p of [lF, lR, uF, uR]) {
     const s = new THREE.Mesh(pickGeo, steelMat); s.position.copy(p.p); chassis.add(s);
   }
-
   return {
     x, z, front, sx, hardLocal: new THREE.Vector3(x, CFG.hardY, z),
     steer: 0, spin: 0, spinVel: 0,
@@ -427,14 +588,15 @@ function buildWheel(x, z, front, sx) {
   };
 }
 const wheels = [
-  buildWheel(+0.95, +1.15, true, +1),   // FE
-  buildWheel(-0.95, +1.15, true, -1),   // FD
-  buildWheel(+0.95, -1.15, false, +1),  // TE
-  buildWheel(-0.95, -1.15, false, -1),  // TD
+  buildWheel(+0.95, +1.15, true, +1),
+  buildWheel(-0.95, +1.15, true, -1),
+  buildWheel(+0.95, -1.15, false, +1),
+  buildWheel(-0.95, -1.15, false, -1),
 ];
+for (const w of wheels) regDyn(w.frame, new THREE.Vector3(w.x, -0.35, w.z), 1.15);
 
 /* ============================================================
-   [7] DEBUG — linhas dos 24 raycasts
+   [8] DEBUG — linhas dos 24 raycasts
 ============================================================ */
 const rayPos = new Float32Array(24 * 2 * 3);
 const rayCol = new Float32Array(24 * 2 * 3);
@@ -451,29 +613,87 @@ const rayPoints = new THREE.Points(ptGeo,
   new THREE.PointsMaterial({ color: 0xffc46b, size: 0.07 }));
 rayPoints.frustumCulled = false; scene.add(rayPoints);
 let raysVisible = true;
+regDyn(rayLines, v => v.copy(carPosPlaceholder), 2.6, null, false, () => raysVisible);
+regDyn(rayPoints, v => v.copy(carPosPlaceholder), 2.6, null, false, () => raysVisible);
+var carPosPlaceholder = new THREE.Vector3(); // preenchido pelo syncBody abaixo
 
 /* ============================================================
-   [8] ENTRADA
+   [9] ENTRADA + MENU (P) + PRESETS
 ============================================================ */
-const keys = new Set();
-addEventListener('keydown', e => {
-  if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
-  keys.add(e.code);
-  if (e.code === 'KeyL') toggleLights();
-  if (e.code === 'KeyG') toggleRays();
-  if (e.code === 'KeyR') resetCar();
-});
-addEventListener('keyup', e => keys.delete(e.code));
+const PRESETS = {
+  potato: { scale: 0.50, fogNear: 6,  fogFar: 55,  env: false, shadows: false, shadowRes: 1024, headlights: false, glass: 'cheap',    tone: false, aniso: 1, sun: 1.5, hemi: 1.05 },
+  baixo:  { scale: 0.65, fogNear: 10, fogFar: 85,  env: false, shadows: false, shadowRes: 1024, headlights: false, glass: 'cheap',    tone: false, aniso: 2, sun: 1.7, hemi: 0.95 },
+  medio:  { scale: 0.80, fogNear: 14, fogFar: 120, env: true,  shadows: true,  shadowRes: 1024, headlights: true,  glass: 'physical', tone: true,  aniso: 4, sun: 2.0, hemi: 0.55 },
+  alto:   { scale: 1.00, fogNear: 18, fogFar: 160, env: true,  shadows: true,  shadowRes: 2048, headlights: true,  glass: 'physical', tone: true,  aniso: 8, sun: 2.3, hemi: 0.45 }
+};
+const PDESC = {
+  potato: '50% res · sem sombras · sem reflexos · faróis só emissivos · fog curto',
+  baixo:  '65% res · sem sombras · sem reflexos · fog médio',
+  medio:  '80% res · sombras 1024 · reflexos de estúdio · faróis reais',
+  alto:   '100% res · sombras 2048 · reflexos · tone mapping ACES'
+};
+let presetName = PRESETS[cfg.preset] ? cfg.preset : 'potato';
+const up = cfg.up && typeof cfg.up.scale === 'number' ? cfg.up : { on: true, scale: 0.5, pix: false };
+let lightsOn = !!cfg.lights;
 
-let lightsOn = true;
+let rw = 0, rh = 0;
+function effScale() { return up.on ? clamp(up.scale, 0.3, 1) : PRESETS[presetName].scale; }
+function applyResolution() {
+  const s = effScale();
+  rw = Math.max(2, Math.round(innerWidth * s));
+  rh = Math.max(2, Math.round(innerHeight * s));
+  renderer.setPixelRatio(1);
+  renderer.setSize(rw, rh, false);
+  renderer.domElement.style.width = '100%';
+  renderer.domElement.style.height = '100%';
+  renderer.domElement.style.imageRendering = up.pix ? 'pixelated' : 'auto';
+}
+function bumpMaterials() {
+  scene.traverse(o => {
+    if (o.isMesh && o.material) {
+      (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => m.needsUpdate = true);
+    }
+  });
+}
+function updateHeadlights() {
+  const on = lightsOn && PRESETS[presetName].headlights;
+  spotL.visible = spotR.visible = on;
+  lampMat.emissiveIntensity = lightsOn ? 3.4 : 0.12;
+}
+function applyPreset(name, silent = false) {
+  presetName = name;
+  const p = PRESETS[name];
+  scene.fog.near = p.fogNear; scene.fog.far = p.fogFar;
+  cullFar = p.fogFar + 10;
+  renderer.toneMapping = p.tone ? THREE.ACESFilmicToneMapping : THREE.NoToneMapping;
+  if (p.env) { if (!envTex) envTex = buildEnv(); scene.environment = envTex; }
+  else scene.environment = null;
+  renderer.shadowMap.enabled = p.shadows;
+  sun.castShadow = p.shadows;
+  if (p.shadows) {
+    sun.shadow.mapSize.set(p.shadowRes, p.shadowRes);
+    if (sun.shadow.map) { sun.shadow.map.dispose(); sun.shadow.map = null; }
+  }
+  sun.intensity = p.sun; hemi.intensity = p.hemi;
+  spotL.visible = spotR.visible = false; // updateHeadlights ajusta
+  glassMesh.material = p.glass === 'physical' ? glassPhysical : glassCheap;
+  floorTex.anisotropy = p.aniso; floorTex.needsUpdate = true;
+  updateHeadlights();
+  applyResolution();
+  bumpMaterials();
+  document.getElementById('chip-preset').textContent = name.toUpperCase();
+  cfg.preset = name;
+  if (!silent) { saveCfg(); updateMenuUI(); }
+}
 function toggleLights() {
   lightsOn = !lightsOn;
-  lampMat.emissiveIntensity = lightsOn ? 3.4 : 0.12;
+  cfg.lights = lightsOn; saveCfg();
+  updateHeadlights();
   document.getElementById('chip-lights').classList.toggle('on', lightsOn);
 }
 function toggleRays() {
   raysVisible = !raysVisible;
-  rayLines.visible = rayPoints.visible = raysVisible;
+  cfg.rays = raysVisible; saveCfg();
   document.getElementById('chip-rays').classList.toggle('on', raysVisible);
 }
 function resetCar() {
@@ -484,8 +704,85 @@ function resetCar() {
   steerState = 0;
   camPos.set(0, 3.4, -9);
 }
+function resetWorld() {
+  resetCar();
+  for (const c of crates) {
+    c.body.setTranslation({ x: c.spawn[0], y: c.spawn[1], z: c.spawn[2] }, true);
+    c.body.setRotation({ x: 0, y: 0, z: 0, w: 1 }, true);
+    c.body.setLinvel({ x: 0, y: 0, z: 0 }, true);
+    c.body.setAngvel({ x: 0, y: 0, z: 0 }, true);
+  }
+  odo = 0;
+}
 
-// câmera orbital (arraste) com retorno suave
+// menu
+const menu = document.getElementById('menu');
+let menuOpen = false;
+function setMenu(open) {
+  menuOpen = open;
+  menu.classList.toggle('open', open);
+  if (open) { keys.clear(); updateMenuUI(); }
+  else if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+}
+function updateMenuUI() {
+  document.querySelectorAll('.pbtn').forEach(b => b.classList.toggle('on', b.dataset.preset === presetName));
+  document.getElementById('m-pdesc').textContent = PDESC[presetName];
+  document.getElementById('up-on').checked = up.on;
+  document.getElementById('up-scale').value = Math.round(up.scale * 100);
+  document.getElementById('up-pct').textContent = Math.round(up.scale * 100) + '%';
+  document.getElementById('up-pix').checked = up.pix;
+  const s = effScale();
+  document.getElementById('up-res').innerHTML =
+    `interno: <b>${Math.round(innerWidth * s)}×${Math.round(innerHeight * s)}px</b> → tela ${innerWidth}×${innerHeight}`;
+  updateMemUI(); updateMenuStats();
+}
+function memLine() {
+  const a = (localStorage.getItem(LS_CFG) || '').length;
+  const b = (localStorage.getItem(LS_STATE) || '').length;
+  const ago = lastSave ? Math.max(0, Math.round((performance.now() - lastSave) / 1000)) : null;
+  return `config <b>${a} B</b> · mundo <b>${b} B</b>` +
+    (ago != null ? ` · último save há <b>${ago}s</b>` : ' · aguardando primeiro save');
+}
+function updateMemUI() {
+  const el = document.getElementById('m-mem');
+  try { el.innerHTML = memLine(); } catch (e) { el.textContent = 'localStorage indisponível'; }
+}
+function fmtK(n) { return n > 1000 ? (n / 1000).toFixed(1) + 'k' : String(n); }
+function updateMenuStats() {
+  const s = effScale();
+  document.getElementById('m-stats').innerHTML =
+    `FPS <b>${fpsEMA | 0}</b> · DRAWS <b>${lastCalls}</b> · TRIS <b>${fmtK(lastTris)}</b><br>` +
+    `VISÍVEIS <b>${statV}/${cullables.length}</b> · CULL FRUSTUM <b>${statF}</b> · OCLUSÃO <b>${statO}</b><br>` +
+    `RESOLUÇÃO <b>${rw}×${rh}</b> → ${innerWidth}×${innerHeight} (${Math.round(s * 100)}%)`;
+}
+document.querySelectorAll('.pbtn').forEach(b => b.addEventListener('click', () => applyPreset(b.dataset.preset)));
+document.getElementById('m-close').addEventListener('click', () => setMenu(false));
+menu.addEventListener('click', e => { if (e.target === menu) setMenu(false); });
+document.getElementById('up-on').addEventListener('change', e => { up.on = e.target.checked; cfg.up = up; saveCfg(); applyResolution(); updateMenuUI(); });
+document.getElementById('up-scale').addEventListener('input', e => { up.scale = e.target.value / 100; cfg.up = up; saveCfg(); applyResolution(); updateMenuUI(); });
+document.getElementById('up-pix').addEventListener('change', e => { up.pix = e.target.checked; cfg.up = up; saveCfg(); applyResolution(); });
+document.getElementById('m-save').addEventListener('click', () => { saveCfg(); saveState(); updateMenuUI(); });
+document.getElementById('m-wipe').addEventListener('click', () => {
+  try { localStorage.removeItem(LS_STATE); localStorage.removeItem(LS_CFG); } catch (e) {}
+  resetWorld(); updateMenuUI();
+});
+
+const keys = new Set();
+addEventListener('keydown', e => {
+  if (menuOpen) {
+    if (e.code === 'KeyP' || e.code === 'Escape') { e.preventDefault(); setMenu(false); }
+    return; // menu aberto: ignora teclas do jogo
+  }
+  if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
+  keys.add(e.code);
+  if (e.code === 'KeyP') setMenu(true);
+  else if (e.code === 'KeyL') toggleLights();
+  else if (e.code === 'KeyG') toggleRays();
+  else if (e.code === 'KeyR') resetCar();
+});
+addEventListener('keyup', e => keys.delete(e.code));
+
+// câmera orbital
 let camOrbit = 0, camPitch = 0.30, camDist = 8.2, dragging = false, lastPX = 0, lastPY = 0;
 const camPos = new THREE.Vector3(0, 3.4, -9);
 renderer.domElement.addEventListener('pointerdown', e => { dragging = true; lastPX = e.clientX; lastPY = e.clientY; });
@@ -499,9 +796,56 @@ addEventListener('pointermove', e => {
 addEventListener('wheel', e => { camDist = clamp(camDist + e.deltaY * 0.008, 4.5, 15); });
 
 /* ============================================================
-   [9] FÍSICA — suspensão multi-raycast + pneu
+   [10] PERSISTÊNCIA DO MUNDO — localStorage (memória física)
+   carro, caixotes e odômetro salvos a cada 6s + ao sair
 ============================================================ */
-const carQ = new THREE.Quaternion(), carPos = new THREE.Vector3();
+let odo = 0, lastSave = 0;
+function saveState() {
+  const t = body.translation(), q = body.rotation();
+  const data = {
+    odo,
+    car: [t.x, t.y, t.z, q.x, q.y, q.z, q.w],
+    crates: crates.map(c => {
+      const p = c.body.translation(), r = c.body.rotation();
+      return [p.x, p.y, p.z, r.x, r.y, r.z, r.w];
+    })
+  };
+  try {
+    localStorage.setItem(LS_STATE, JSON.stringify(data));
+    lastSave = performance.now();
+  } catch (e) {}
+}
+function loadState() {
+  try {
+    const s = localStorage.getItem(LS_STATE);
+    if (!s) return false;
+    const d = JSON.parse(s);
+    if (d.car) {
+      body.setTranslation({ x: d.car[0], y: d.car[1], z: d.car[2] }, true);
+      body.setRotation({ x: d.car[3], y: d.car[4], z: d.car[5], w: d.car[6] }, true);
+    }
+    body.setLinvel({ x: 0, y: 0, z: 0 }, true);
+    body.setAngvel({ x: 0, y: 0, z: 0 }, true);
+    (d.crates || []).forEach((c, i) => {
+      if (!crates[i]) return;
+      crates[i].body.setTranslation({ x: c[0], y: c[1], z: c[2] }, true);
+      crates[i].body.setRotation({ x: c[3], y: c[4], z: c[5], w: c[6] }, true);
+      crates[i].body.setLinvel({ x: 0, y: 0, z: 0 }, true);
+    });
+    odo = +d.odo || 0;
+    return true;
+  } catch (e) { return false; }
+}
+addEventListener('beforeunload', () => { saveCfg(); saveState(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden) { saveCfg(); saveState(); } });
+
+bootMsg.textContent = 'restaurando memória salva…';
+const hadState = loadState();
+
+/* ============================================================
+   [11] FÍSICA — suspensão multi-raycast + pneu
+============================================================ */
+const carQ = new THREE.Quaternion(), carPos = carPosPlaceholder;
 const carUp = new THREE.Vector3(), carFwd = new THREE.Vector3(), carRight = new THREE.Vector3();
 const comW = new THREE.Vector3(), linV = new THREE.Vector3(), angV = new THREE.Vector3();
 const _hp = new THREE.Vector3(), _down = new THREE.Vector3(), _o = new THREE.Vector3();
@@ -509,6 +853,7 @@ const _nAcc = new THREE.Vector3(), _f = new THREE.Vector3(), _wc = new THREE.Vec
 const _fw = new THREE.Vector3(), _side = new THREE.Vector3(), _pv = new THREE.Vector3(), _r = new THREE.Vector3();
 const _d = new THREE.Vector3(), _q1 = new THREE.Quaternion();
 const _ray = new RAPIER.Ray({ x: 0, y: 0, z: 0 }, { x: 0, y: -1, z: 0 });
+const _rayOcc = new RAPIER.Ray({ x: 0, y: 0, z: 0 }, { x: 0, y: 1, z: 0 });
 
 let steerState = 0, throttle = 0, reverseMode = false, braking = false, handbrake = false;
 
@@ -557,16 +902,14 @@ function suspension(w, dt) {
   w.grounded = hits > 0;
 
   if (w.grounded) {
-    // compressão real da mola (negativa = suspensão estendida)
     const raw = sum / hits - CFG.maxDrop;
     const comp = clamp(raw, -CFG.maxDrop, CFG.maxComp);
     w.comp = comp;
     w.len = CFG.rest - comp;
     if (_nAcc.lengthSq() < 1e-4) _nAcc.copy(carUp); else _nAcc.normalize();
     w.normal.copy(_nAcc);
-    // mola + amortecedor ao longo da normal média dos 6 rays
     pointVel(_hp, _pv);
-    const vComp = _pv.dot(_down); // > 0 = comprimindo
+    const vComp = _pv.dot(_down);
     let F = CFG.k * comp + CFG.c * vComp;
     F = clamp(F, -CFG.maxPull, CFG.maxPush);
     w.load = F;
@@ -582,7 +925,7 @@ function suspension(w, dt) {
 function tireForces(w, dt) {
   if (!w.grounded || w.comp < 0.02) {
     w.spinVel *= (1 - Math.min(0.6 * dt, 0.9));
-    if (!w.grounded && throttle !== 0) w.spinVel += (throttle > 0 ? 34 : -22) * dt; // roda livre no ar
+    if (!w.grounded && throttle !== 0) w.spinVel += (throttle > 0 ? 34 : -22) * dt;
     return;
   }
   _wc.copy(w.hardLocal).applyQuaternion(carQ).add(carPos).addScaledVector(carUp, -w.len);
@@ -596,11 +939,11 @@ function tireForces(w, dt) {
   pointVel(_wc, _pv);
   const vLat = _pv.dot(_side), vFwd = _pv.dot(_fw);
 
-  let maxLat = 500 + 1.7 * Math.max(w.load, 0);          // grip limitado pela carga do pneu
-  if (handbrake && !w.front) maxLat *= 0.15;             // traseira solta = drift
+  let maxLat = 500 + 1.7 * Math.max(w.load, 0);
+  if (handbrake && !w.front) maxLat *= 0.15;
   const Fside = clamp(-vLat * CFG.latC, -maxLat, maxLat);
 
-  let Flong = clamp(-vFwd * 40, -CFG.rrMax, CFG.rrMax);  // resistência ao rolamento
+  let Flong = clamp(-vFwd * 40, -CFG.rrMax, CFG.rrMax);
   if (braking) {
     const bmax = CFG.brakeMax * (w.front ? 1 : (handbrake ? 2.2 : 1.15));
     Flong += clamp(-vFwd * CFG.brakeC, -bmax, bmax);
@@ -633,7 +976,8 @@ function physicsStep(dt) {
   for (const w of wheels) suspension(w, dt);
 
   const sp = linV.length();
-  if (sp > 0.01) { // arrasto aerodinâmico
+  odo += sp * dt;
+  if (sp > 0.01) {
     _d.copy(linV).multiplyScalar(-0.9 * sp * dt);
     body.applyImpulse(_d, true);
   }
@@ -642,7 +986,7 @@ function physicsStep(dt) {
 }
 
 /* ============================================================
-   [10] VISUAL / HUD / LOOP
+   [12] VISUAL / HUD / LOOP
 ============================================================ */
 const _v3 = new THREE.Vector3(), _v4 = new THREE.Vector3(), _v5 = new THREE.Vector3(), _v6 = new THREE.Vector3();
 
@@ -659,14 +1003,12 @@ function updateVisuals(dt) {
     w.steerG.position.set(w.x, yW, w.z);
     w.steerG.rotation.y = w.steer;
     w.spinG.rotation.x = w.spin;
-    // ball joints no espaço local do frame
     const bjl = _v1.set(w.x - w.sx * 0.06, yW - 0.10, w.z);
     const bju = _v2.set(w.x - w.sx * 0.10, yW + 0.27, w.z);
     placeCyl(w.lF.m, w.lF.p, bjl, 0.026);
     placeCyl(w.lR.m, w.lR.p, bjl, 0.026);
     placeCyl(w.uF.m, w.uF.p, bju, 0.024);
     placeCyl(w.uR.m, w.uR.p, bju, 0.024);
-    // coilover
     const top = w.coilTop;
     const btm = _v3.set(w.x - w.sx * 0.20, yW - 0.04, w.z - 0.02);
     _v4.subVectors(btm, top);
@@ -676,13 +1018,11 @@ function updateVisuals(dt) {
     w.spring.scale.y = sl;
     placeCyl(w.damper, top, _v6.copy(top).lerp(btm, 0.55), 0.036);
   }
-  // caixotes
   for (const c of crates) {
     const p = c.body.translation(), q = c.body.rotation();
     c.mesh.position.set(p.x, p.y, p.z);
     c.mesh.quaternion.set(q.x, q.y, q.z, q.w);
   }
-  // linhas de debug dos rays
   if (raysVisible) {
     let pi = 0, qi = 0;
     for (const w of wheels) for (const d of w.rayDbg) {
@@ -698,7 +1038,6 @@ function updateVisuals(dt) {
     ptGeo.setDrawRange(0, qi / 3);
     ptGeo.attributes.position.needsUpdate = true;
   }
-  // sol acompanha o carro (sombras sempre por perto)
   sun.position.set(carPos.x + 12, carPos.y + 18, carPos.z + 6);
   sun.target.position.copy(carPos);
 }
@@ -729,8 +1068,13 @@ const telRefs = ['FE', 'FD', 'TE', 'TD'].map(lbl => {
 });
 const spdEl = document.getElementById('spd'), gearEl = document.getElementById('gear'),
       raysInd = document.getElementById('rays-ind');
+const stFps = document.getElementById('st-fps'), stDraw = document.getElementById('st-draw'),
+      stTri = document.getElementById('st-tri'), stCull = document.getElementById('st-cull'),
+      stOdo = document.getElementById('st-odo');
 
-function updateHUD() {
+let lastCalls = 0, lastTris = 0, fpsEMA = 60, stripAcc = 0;
+
+function updateHUD(dt) {
   const fwdSpeed = linV.dot(carFwd);
   spdEl.textContent = Math.round(Math.abs(fwdSpeed) * 3.6);
   let gear = 'D';
@@ -747,23 +1091,53 @@ function updateHUD() {
     t.load.textContent = (w.load / 1000).toFixed(1) + ' kN';
     t.hits.textContent = w.hits + '/6';
   });
+  stripAcc += dt;
+  if (stripAcc > 0.25) {
+    stripAcc = 0;
+    stFps.textContent = fpsEMA | 0;
+    stDraw.textContent = lastCalls;
+    stTri.textContent = fmtK(lastTris);
+    stCull.textContent = statF + 'F/' + statO + 'O';
+    stOdo.textContent = odo < 1000 ? (odo | 0) + ' m' : (odo / 1000).toFixed(2) + ' km';
+    if (menuOpen) { updateMenuStats(); updateMemUI(); }
+  }
 }
 
-// loop principal — passo fixo com acumulador
-let last = performance.now() / 1000, acc = 0, booted = false;
+// aplica config salva antes do primeiro frame
+raysVisible = !!cfg.rays;
+rayLines.visible = rayPoints.visible = raysVisible;
+document.getElementById('chip-rays').classList.toggle('on', raysVisible);
+document.getElementById('chip-lights').classList.toggle('on', lightsOn);
+bootMsg.textContent = hadState ? 'mundo restaurado da memória…' : 'aplicando preset…';
+applyPreset(presetName, true);
+
+// loop principal — passo fixo com acumulador (pausa com menu aberto)
+let last = performance.now() / 1000, acc = 0, saveT = 0, booted = false;
 function frame() {
   requestAnimationFrame(frame);
   const now = performance.now() / 1000;
-  const dt = Math.min(now - last, 0.05);
-  last = now; acc += dt;
-  let steps = 0;
-  while (acc >= FIXED && steps < 3) { physicsStep(FIXED); acc -= FIXED; steps++; }
-  if (steps === 3) acc = 0;
+  const rawDt = now - last;
+  const dt = Math.min(rawDt, 0.05);
+  last = now;
+  if (rawDt > 0) fpsEMA += (1 / rawDt - fpsEMA) * 0.08;
+
+  if (!menuOpen) {
+    acc += dt; saveT += dt;
+    let steps = 0;
+    while (acc >= FIXED && steps < 3) { physicsStep(FIXED); acc -= FIXED; steps++; }
+    if (steps === 3) acc = 0;
+    if (saveT > 6) { saveT = 0; saveState(); }
+  } else acc = 0;
+
   syncBody();
   updateVisuals(dt);
   updateCamera(dt);
-  updateHUD();
-  renderer.render(scene, camera);
+  cullPass();                       // frustum + distância + oclusão
+  renderer.render(scene, camera);   // three ainda faz o cull fino por mesh
+  lastCalls = renderer.info.render.calls;
+  lastTris = renderer.info.render.triangles;
+  updateHUD(dt);
+  renderer.render; // (noop — mantém minificador feliz)
   if (!booted) { booted = true; bootEl.classList.add('done'); }
 }
 frame();
@@ -771,7 +1145,7 @@ frame();
 addEventListener('resize', () => {
   camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
-  renderer.setSize(innerWidth, innerHeight);
+  applyResolution();
 });
 </script>
 </body>
