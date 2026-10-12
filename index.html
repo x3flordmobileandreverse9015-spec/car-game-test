@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WB-6 — Chassi Raycast · Suspensão Realista</title>
+<title>WB-6 — Chassi Raycast · X3F Ativo + Sphere Cast</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
@@ -178,7 +178,7 @@
 
 <div id="boot">
   <div class="boot-title">WB<b>—</b>6</div>
-  <div class="boot-sub">SUSPENSÃO REALISTA · 5 SUSPENSÕES · MP</div>
+  <div class="boot-sub">X3F ATIVO · SPHERE CAST · 6 SUSPENSÕES</div>
   <div class="boot-bar"></div>
   <div id="boot-msg">iniciando…</div>
   <div id="boot-detail"></div>
@@ -301,11 +301,11 @@
 
     <div class="m-sec">
       <div class="m-label">FÍSICA — SUSPENSÃO</div>
-      <div class="row-line"><span>raycasts por roda <b id="m-rays-n">6</b> <span class="dim">(1–231)</span></span>
+      <div class="row-line"><span>casting rays por roda <b id="m-rays-n">6</b> <span class="dim">(1–231)</span></span>
         <input type="range" id="m-rays" min="1" max="231" step="1" value="6"></div>
       <div class="row-line"><span>oclusão por raycast <span class="dim">(desligue se algo sumir)</span></span>
         <label class="sw"><input type="checkbox" id="m-occ"><i></i></label></div>
-      <div class="m-note">raycast puro + barra anti-roll + bump-stop progressivo · CCD · SHIFT pula.</div>
+      <div class="m-note">o slider vale para suspensões por RAIO. para trocar raios por <b>esferas</b>, selecione <b>SPHERE CAST</b> na suspensão do editor (E): 3 casts de esfera por roda (raio 85% do pneu), média natural do terreno. X3F no modo padrão já é ativo e nivela o carro sozinho em barrancos e lombadas.</div>
     </div>
 
     <div class="m-sec">
@@ -389,7 +389,8 @@
         <option value="single">SINGLE WISHBONE</option>
         <option value="mac">MACPHERSON — pré-vê o terreno (estável)</option>
         <option value="leaf">LEAF SPRING</option>
-        <option value="x3f">X3F SPRING — sensores/câmeras + editor</option>
+        <option value="x3f">X3F SPRING — ativa, nivela sozinha</option>
+        <option value="sphere">SPHERE CAST — esferas no lugar dos raios</option>
         <option value="lowrider">LOW RIDER — hidráulica por teclas</option>
       </select>
       <div id="e-x3f" style="display:none">
@@ -407,7 +408,7 @@
           <button class="pbtn" id="e-x3f-addc">+ CÂMERA</button>
           <button class="mbtn" id="e-x3f-clear">LIMPAR</button>
         </div>
-        <div class="m-note">clique num pod para selecionar · a posição em Y NÃO afeta o feed (compara alturas absolutas do solo)</div>
+        <div class="m-note">modo de fábrica (sem nós): 8 sondas internas — solo sob cada roda + solo à frente pela trajetória — e o carro fica RETO em barrancos e lombadas. sensores/câmeras adicionados refinam o plano de referência.</div>
         <div id="e-x3fedit" class="dis" style="display:none">
           <div class="row-line"><span id="e-x3fname">—</span>
             <button class="mbtn warn" id="e-x3f-del" disabled>DELETAR</button></div>
@@ -438,7 +439,7 @@
 
 <script type="module">
 /* ============================================================
-   [B] BOOT RESILIENTE — espelhos + timeout + estágios + watchdog
+   [B] BOOT RESILIENTE
 ============================================================ */
 const bootEl = document.getElementById('boot');
 const bootMsg = document.getElementById('boot-msg');
@@ -550,7 +551,7 @@ function sanitizeCode(v){
 ============================================================ */
 const LS_CFG = 'wb6.cfg.v2', LS_STATE = 'wb6.state.v2', LS_CAR = 'wb6.car.v2';
 const PRESET_NAMES = ['potato','baixo','medio','alto'];
-const SUSP_NAMES = ['double','single','mac','leaf','x3f','lowrider'];
+const SUSP_NAMES = ['double','single','mac','leaf','x3f','sphere','lowrider'];
 
 let cfg = { name:'PILOTO', preset:'potato', lights:true, rays:true, rayCount:6, occ:true,
             snd:true, vol:70, up:{ on:true, scale:0.5, pix:false }, proc:{ on:false, seed:'x3f-6' } };
@@ -1014,7 +1015,7 @@ function disableProc(silent = false){
 }
 
 /* ============================================================
-   [5] CHASSI — CCD (sem colliders de roda: suspensão raycast pura)
+   [5] CHASSI — CCD
 ============================================================ */
 const body = world.createRigidBody(RAPIER.RigidBodyDesc.dynamic()
   .setTranslation(0,1.0,0).setLinearDamping(0.04).setAngularDamping(0.5)
@@ -1026,7 +1027,7 @@ const CFG = {
   k:32000, c:2900, maxPush:13000, maxPull:5200,
   latC:2400, brakeC:1600, brakeMax:1700,
   driveF:1150, rrMax:130,
-  arb:8500            // barra anti-roll (realismo: transferência de carga)
+  arb:8500
 };
 const COM_LOCAL = new THREE.Vector3(0,-0.125,0);
 
@@ -1293,6 +1294,7 @@ const SUSP = {
   mac:     { k:0.95, c:1.05, comp:1.00, arb:0.85 },
   leaf:    { k:0.80, c:1.25, comp:1.15, arb:0.50 },
   x3f:     { k:1.00, c:1.00, comp:1.00, arb:1.00 },
+  sphere:  { k:1.00, c:0.95, comp:1.00, arb:1.00 },
   lowrider:{ k:1.00, c:1.15, comp:1.00, arb:1.00 }
 };
 
@@ -1317,7 +1319,8 @@ function buildWheel(x, z, front, sx){
   return {
     x, z, front, sx, hardLocal:new THREE.Vector3(x,CFG.hardY,z),
     steer:0, spin:0, spinVel:0, comp:0, load:0, len:CFG.rest, hits:0, grounded:false,
-    normal:new THREE.Vector3(0,1,0), distV:0.70, distVSm:0.70, macFeed:0, x3fFeed:0, lowCmd:0,
+    normal:new THREE.Vector3(0,1,0), groundY:NaN,
+    macFeed:0, x3fFeed:0, lowCmd:0,
     prevPairComp:0, pair:null, idx:0,
     rayDbg:[], v:{ type:'double' }, frame, steerG, spinG, susG
   };
@@ -1339,7 +1342,7 @@ function rebuildSuspensionVisuals(){
       m.castShadow = true; w.susG.add(m); return { m, p:new THREE.Vector3(px,py,pz) }; };
     const mkPick = (px,py,pz)=>{ const s = new THREE.Mesh(pickGeo, steelMat);
       s.position.set(px,py,pz); w.susG.add(s); };
-    if (armStyle==='double' || armStyle==='single' || suspType==='x3f' || suspType==='lowrider'){
+    if (armStyle==='double' || armStyle==='single' || suspType==='x3f' || suspType==='lowrider' || suspType==='sphere'){
       v.lF = mkArm(sx*0.45,-0.16,z+0.40); v.lR = mkArm(sx*0.45,-0.16,z-0.40);
       mkPick(sx*0.45,-0.16,z+0.40); mkPick(sx*0.45,-0.16,z-0.40);
       if (armStyle!=='single'){
@@ -1411,7 +1414,7 @@ function x3fActiveNodes(){
 }
 
 /* ============================================================
-   [8] DEBUG — buffers 4 rodas × 231 rays + nós X3F
+   [8] DEBUG — 4 rodas × 231 rays + nós X3F + sondas
 ============================================================ */
 const MAXR = 231;
 const rayPos = new Float32Array(MAXR*4*2*3), rayCol = new Float32Array(MAXR*4*2*3);
@@ -1461,8 +1464,10 @@ function setRayCount(n){
     ri++;
   }
   RAY_OFFSETS = offs;
-  for (const w of wheels)
+  for (const w of wheels){
     w.rayDbg = offs.map(()=>({ d:0, hit:false }));
+    while (w.rayDbg.length < 3) w.rayDbg.push({ d:0, hit:false });  // mínimo p/ sphere cast
+  }
 }
 
 /* ============================================================
@@ -1913,7 +1918,7 @@ function applyPreset(name, silent = false){
   cullFar = p.fogFar + 12;
   renderer.toneMapping = p.tone ? THREE.ACESFilmicToneMapping : THREE.NoToneMapping;
   if (p.env){
-    if (!envTex && !pendingEnv) pendingEnv = true;   // PMREM adiado pós-primeiro frame
+    if (!envTex && !pendingEnv) pendingEnv = true;
     scene.environment = envTex || null;
   } else {
     scene.environment = null;
@@ -1961,8 +1966,10 @@ let nanResets = 0;
 function hardResetCar(){
   setCarPose(0, spawnY(0,0), worldMode==='mp' ? -24 : 0, 0,0,0,1);
   steerState = 0;
-  for (const w of wheels){ w.macFeed=0; w.x3fFeed=0; w.lowCmd=0; w.distVSm=0.70; w.distV=0.70; w.comp=0; w.load=0; w.spinVel=0; w.prevPairComp=0; }
-  x3fFeedSm = 0;
+  for (const w of wheels){
+    w.macFeed=0; w.x3fFeed=0; w.lowCmd=0; w.groundY=NaN;
+    w.comp=0; w.load=0; w.spinVel=0; w.prevPairComp=0;
+  }
   camPos.set(0, 3.4, worldMode==='mp' ? -33 : -9);
   nanResets++;
   toast('ESTADO FÍSICO INVÁLIDO — CARRO REPOSICIONADO');
@@ -2160,7 +2167,7 @@ function bindEditorUI(){
     x3fNodes = [];
     selX3f = null;
     rebuildX3FPods(); saveCar(); updateEditorUI();
-    toast('NÓS X3F LIMPOS — USANDO OS 6 FIXOS');
+    toast('NÓS X3F LIMPOS — MODO DE FÁBRICA (8 SONDas)');
   });
   $('e-x3f-del').addEventListener('click', ()=>{
     if (!selX3f) return;
@@ -2228,7 +2235,8 @@ function updateEditorUI(){
 function updateSuspSub(){
   const n = RAY_OFFSETS.length;
   const names = { double:'DOUBLE WISHBONE', single:'SINGLE WISHBONE', mac:'MACPHERSON',
-                  leaf:'LEAF SPRING', x3f:'X3F SPRING '+x3fHz+'HZ', lowrider:'LOW RIDER' };
+                  leaf:'LEAF SPRING', x3f:'X3F SPRING '+x3fHz+'HZ',
+                  sphere:'SPHERE CAST', lowrider:'LOW RIDER' };
   document.getElementById('sub-susp').textContent =
     `${names[suspType] || 'DOUBLE WISHBONE'} · ${n} RAY${n>1?'S':''} · RAPIER`;
 }
@@ -2529,7 +2537,7 @@ document.addEventListener('visibilitychange', ()=>{
 });
 
 /* ============================================================
-   [13] FÍSICA — raycast puro + ARB + mac estável + anti-NaN
+   [13] FÍSICA — SPHERE CAST + suspensão ativa (X3F/mac) + ARB
 ============================================================ */
 const carQ = new THREE.Quaternion();
 const carUp = new THREE.Vector3(), carFwd = new THREE.Vector3(), carRight = new THREE.Vector3();
@@ -2572,6 +2580,49 @@ function safeImpulseAtPoint(imp, pt){
     body.applyImpulseAtPoint(imp, pt, true);
 }
 
+/* ---- SPHERE CAST — castShape com fallback para raio ---- */
+const SBALL_R = CFG.wheelR*0.85;
+let _sphShape = null;
+try { _sphShape = new RAPIER.Ball(SBALL_R); } catch(e){ _sphShape = null; }
+const _sphPos = {x:0,y:0,z:0}, _sphRot = {x:0,y:0,z:0,w:1}, _sphVel = {x:0,y:0,z:0};
+// devolve o deslocamento do CENTRO da esfera até o primeiro toque (toi)
+function sphereProbe(ox, oy, oz, dwn, maxD){
+  if (_sphShape && typeof world.castShape === 'function'){
+    _sphPos.x=ox; _sphPos.y=oy; _sphPos.z=oz;
+    _sphVel.x=dwn.x; _sphVel.y=dwn.y; _sphVel.z=dwn.z;
+    let hit = null;
+    try {
+      hit = world.castShape(_sphPos, _sphRot, _sphVel, _sphShape, maxD, true,
+        undefined, undefined, undefined, body);
+    } catch(e){ hit = null; }
+    if (hit){
+      let t = NaN;
+      if (isF(hit.timeOfImpact)) t = hit.timeOfImpact;
+      else if (isF(hit.toi)) t = hit.toi;
+      else if (isF(hit.time_of_impact)) t = hit.time_of_impact;
+      if (isF(t) && t >= 0){
+        let nx=0, ny=1, nz=0;
+        if (hit.normal){
+          const l = Math.hypot(hit.normal.x, hit.normal.y, hit.normal.z);
+          if (l > 1e-5 && isF(hit.normal.x+hit.normal.y+hit.normal.z)){
+            nx=hit.normal.x/l; ny=hit.normal.y/l; nz=hit.normal.z/l;
+          }
+        }
+        return { toi:Math.max(t, 0.01), nx, ny, nz };
+      }
+    }
+    return null;
+  }
+  // fallback: raio + compensação de raio de esfera
+  _ray.origin.x=ox; _ray.origin.y=oy; _ray.origin.z=oz;
+  _ray.dir.x=dwn.x; _ray.dir.y=dwn.y; _ray.dir.z=dwn.z;
+  let hit = null;
+  try { hit = world.castRay(_ray, maxD + SBALL_R, true, undefined, undefined, undefined, body); } catch(e){}
+  if (hit && isF(hit.toi) && hit.toi >= 0)
+    return { toi:Math.max(hit.toi - SBALL_R, 0.01), nx:0, ny:1, nz:0 };
+  return null;
+}
+
 function suspension(w, dt){
   const sp = SUSP[suspType] || SUSP.double;
   _hp.copy(w.hardLocal).applyQuaternion(carQ).add(carPos);
@@ -2579,21 +2630,39 @@ function suspension(w, dt){
   const rayLen = CFG.rest + CFG.maxDrop + CFG.wheelR;
   let sum = 0, hits = 0, toiSum = 0;
   _nAcc.set(0,0,0);
-  for (let i=0;i<RAY_OFFSETS.length;i++){
-    const ro = RAY_OFFSETS[i];
-    _o.copy(_hp).addScaledVector(carRight, ro.x).addScaledVector(carFwd, ro.z);
-    _ray.origin.x=_o.x; _ray.origin.y=_o.y; _ray.origin.z=_o.z;
-    _ray.dir.x=_down.x; _ray.dir.y=_down.y; _ray.dir.z=_down.z;
-    let hit = null;
-    try { hit = world.castRayAndGetNormal(_ray, rayLen, true, undefined, undefined, undefined, body); } catch(e){}
-    const dbg = w.rayDbg[i];
-    if (hit && isF(hit.toi) && hit.toi >= 0 && isF(hit.normal.x+hit.normal.y+hit.normal.z)){
-      const d = Math.max(hit.toi, 0.02);
-      sum += rayLen - d; toiSum += d;
-      _nAcc.x+=hit.normal.x; _nAcc.y+=hit.normal.y; _nAcc.z+=hit.normal.z;
-      dbg.d = d; dbg.hit = true; hits++;
-    } else {
-      dbg.d = rayLen; dbg.hit = false;
+  if (suspType==='sphere'){
+    // 3 casts de esfera: centro + bordas da banda de rodagem
+    for (let ci=0; ci<3; ci++){
+      const off = ci===0 ? 0 : (ci===1 ? -0.12 : 0.12);
+      _o.copy(_hp).addScaledVector(carRight, off);
+      const res = sphereProbe(_o.x, _o.y, _o.z, _down, rayLen);
+      const dbg = w.rayDbg[ci];
+      if (res){
+        const d0 = res.toi + SBALL_R;   // distância origem→superfície
+        sum += rayLen - d0; toiSum += d0;
+        _nAcc.x+=res.nx; _nAcc.y+=res.ny; _nAcc.z+=res.nz;
+        dbg.d = d0; dbg.hit = true; hits++;
+      } else {
+        dbg.d = rayLen; dbg.hit = false;
+      }
+    }
+  } else {
+    for (let i=0;i<RAY_OFFSETS.length;i++){
+      const ro = RAY_OFFSETS[i];
+      _o.copy(_hp).addScaledVector(carRight, ro.x).addScaledVector(carFwd, ro.z);
+      _ray.origin.x=_o.x; _ray.origin.y=_o.y; _ray.origin.z=_o.z;
+      _ray.dir.x=_down.x; _ray.dir.y=_down.y; _ray.dir.z=_down.z;
+      let hit = null;
+      try { hit = world.castRayAndGetNormal(_ray, rayLen, true, undefined, undefined, undefined, body); } catch(e){}
+      const dbg = w.rayDbg[i];
+      if (hit && isF(hit.toi) && hit.toi >= 0 && isF(hit.normal.x+hit.normal.y+hit.normal.z)){
+        const d = Math.max(hit.toi, 0.02);
+        sum += rayLen - d; toiSum += d;
+        _nAcc.x+=hit.normal.x; _nAcc.y+=hit.normal.y; _nAcc.z+=hit.normal.z;
+        dbg.d = d; dbg.hit = true; hits++;
+      } else {
+        dbg.d = rayLen; dbg.hit = false;
+      }
     }
   }
   w.hits = hits; w.grounded = hits > 0;
@@ -2601,10 +2670,10 @@ function suspension(w, dt){
     const raw = sum/hits - CFG.maxDrop;
     const compLim = CFG.maxComp*sp.comp;
     const comp = sClamp(raw, -CFG.maxDrop, compLim, 0);
-    w.comp = comp; w.len = CFG.rest - comp;
-    w.distV = toiSum/hits;
-    w.distVSm += (w.distV - w.distVSm)*sClamp(20*dt, 0, 1, 0);
-    if (!isF(w.distVSm)) w.distVSm = 0.70;
+    w.comp = comp;
+    // altura do solo sob a roda — INVARIANTE à pose do corpo
+    const dMean = toiSum/hits;
+    w.groundY = isF(dMean) ? (_hp.y - dMean) : NaN;
     if (_nAcc.lengthSq() < 1e-8 || !finVec(_nAcc)) _nAcc.copy(carUp);
     else _nAcc.normalize();
     w.normal.copy(_nAcc);
@@ -2616,13 +2685,11 @@ function suspension(w, dt){
     else if (suspType==='lowrider') feed = w.lowCmd * 0.38;
     let F = CFG.k*sp.k*massF*(comp + feed) + CFG.c*sp.c*massF*vComp;
     F = sClamp(F, -CFG.maxPull*massF, CFG.maxPush*massF, 0);
-    // bump-stop progressivo (suave: quadratic no excesso)
     if (raw > compLim){
       const over = raw - compLim;
       F += CFG.k*massF*(over*2.2 + over*over*6.0);
       F = Math.min(F, CFG.maxPush*massF*2.4);
     }
-    // barra anti-roll: diferença de compressão com a roda oposta
     if (w.pair && w.pair.grounded && w.pair.prevPairComp > 0){
       const arbF = CFG.arb*sp.arb*massF*(w.pair.prevPairComp - comp);
       F += sClamp(arbF, -3500*massF, 3500*massF);
@@ -2630,8 +2697,11 @@ function suspension(w, dt){
     w.load = F;
     _f.copy(_nAcc).multiplyScalar(F*dt);
     safeImpulseAtPoint(_f, _hp);
+    // posição visual/física da roda inclui o feed (visual = força)
+    w.len = CFG.rest - sClamp(comp + feed, -CFG.maxDrop, compLim + 0.15);
   } else {
-    w.comp = 0; w.load = 0; w.len = CFG.rest + CFG.maxDrop; w.normal.copy(carUp);
+    w.comp = 0; w.load = 0; w.groundY = NaN;
+    w.len = CFG.rest + CFG.maxDrop; w.normal.copy(carUp);
   }
   w.prevPairComp = w.grounded ? w.comp : 0;
   tireForces(w, dt, sp);
@@ -2666,99 +2736,111 @@ function tireForces(w, dt, sp){
   w.spinVel = isF(vFwd) ? vFwd/CFG.wheelR : 0;
 }
 
-const _lo = new THREE.Vector3(), _ld = new THREE.Vector3();
-const lookDbg = wheels.map(()=>({ d:2.8, hit:false }));
+const _lo = new THREE.Vector3(), _ld = new THREE.Vector3(), _vd = new THREE.Vector3();
+const lookDbg = wheels.map(()=>({ ox:0, oy:0, oz:0, ex:0, ey:0, ez:0, hit:false }));
 
-/* ---- MacPherson — SEM loop de realimentação:
-   compara ALTURA do solo à frente (ray look-ahead) com a
-   altura do solo sob a roda (raycasts do passo anterior).
-   Nada depende do estado atual da suspensão → não oscila. ---- */
-function macLookAhead(dt){
+/* ---- SUSPENSÃO ATIVA PREDITIVA (núcleo X3F + MacPherson) ----
+   feed_i = K1·(plano − soloSobRoda_i)  → nivela (invariante à pose)
+          + K2·(diferencialÀFrente − médiaÀFrente) → feed-forward
+   Tudo medido em ALTURA DE TERRENO: se o corpo sobe, hp.y sobe
+   e a distância do raio sobe junto — a altura do solo não muda.
+   Zero realimentação → impossível oscilar. */
+function predictiveFeeds(kind, dt){
+  const P = kind==='x3f'
+    ? { K1:1.00, K2:0.60, CL:0.30, RT:6.0 }
+    : { K1:0.55, K2:0.45, CL:0.12, RT:3.0 };
+  const g = [NaN,NaN,NaN,NaN];
   for (let i=0;i<4;i++){
     const w = wheels[i];
-    // solo sob a roda — a partir dos raios verticais já feitos
-    let groundNow = NaN;
-    if (w.hits > 0){
-      let dS = 0;
-      for (const d of w.rayDbg) if (d.hit) dS += d.d;
-      const dMean = dS / w.hits;
-      if (isF(dMean)){
-        _hp.copy(w.hardLocal).applyQuaternion(carQ).add(carPos);
-        groundNow = _hp.y - dMean;
+    if (isF(w.groundY)) g[i] = w.groundY;
+  }
+  let ps=0, pn=0;
+  for (const v of g) if (isF(v)){ ps+=v; pn++; }
+  let plane = pn ? ps/pn : NaN;
+
+  // nós do X3F refinam o plano de referência
+  if (kind==='x3f'){
+    let nSum=0, nCnt=0;
+    for (const n of x3fActiveNodes()){
+      if (!n.dbg) n.dbg = { d:3.0, hit:false };
+      _o.set(n.p[0], n.p[1], n.p[2]).applyQuaternion(carQ).add(carPos);
+      _ray.origin.x=_o.x; _ray.origin.y=_o.y; _ray.origin.z=_o.z;
+      let hit = null;
+      if (n.t === 'cam'){
+        _ld.copy(carFwd).multiplyScalar(0.85).addScaledVector(carUp, -1).normalize();
+        _ray.dir.x=_ld.x; _ray.dir.y=_ld.y; _ray.dir.z=_ld.z;
+        try { hit = world.castRay(_ray, 3.2, true, undefined, undefined, undefined, body); } catch(e){}
+        if (hit && isF(hit.toi) && hit.toi >= 0){
+          n.dbg.d = Math.max(hit.toi, 0.05); n.dbg.hit = true;
+          const gn = _o.y + _ld.y*n.dbg.d;
+          if (isF(gn)){ nSum += gn; nCnt++; }
+        } else { n.dbg.hit = false; n.dbg.d = 3.2; }
+      } else {
+        _ray.dir.x=-carUp.x; _ray.dir.y=-carUp.y; _ray.dir.z=-carUp.z;
+        try { hit = world.castRay(_ray, 3.2, true, undefined, undefined, undefined, body); } catch(e){}
+        if (hit && isF(hit.toi) && hit.toi >= 0){
+          n.dbg.d = Math.max(hit.toi, 0.02); n.dbg.hit = true;
+          const gn = _o.y - carUp.y*n.dbg.d;
+          if (isF(gn)){ nSum += gn; nCnt++; }
+        } else { n.dbg.hit = false; n.dbg.d = 3.2; }
       }
     }
-    // solo à frente — ray diagonal do hardpoint
-    _lo.copy(w.hardLocal).applyQuaternion(carQ).add(carPos).addScaledVector(carUp, 0.6);
-    _ld.copy(carFwd).multiplyScalar(0.85).addScaledVector(carUp, -1).normalize();
-    _ray.origin.x=_lo.x; _ray.origin.y=_lo.y; _ray.origin.z=_lo.z;
-    _ray.dir.x=_ld.x; _ray.dir.y=_ld.y; _ray.dir.z=_ld.z;
-    let hit = null;
-    try { hit = world.castRay(_ray, 3.2, true, undefined, undefined, undefined, body); } catch(e){}
-    let groundAhead = NaN, endD = 3.2;
-    if (hit && isF(hit.toi) && hit.toi >= 0){
-      endD = Math.max(hit.toi, 0.05);
-      groundAhead = _lo.y + _ld.y*endD;   // ponto de hit = solo estimado
+    if (nCnt >= 2 && isF(plane)){
+      plane = plane*0.65 + (nSum/nCnt)*0.35;
+    } else if (nCnt >= 2){
+      plane = nSum/nCnt;
     }
-    lookDbg[i].d = endD;
-    lookDbg[i].hit = !!(hit && isF(hit.toi));
-    // feed: só terreno desigual à frente gera feed; piso uniforme = 0
-    let target = 0;
-    if (isF(groundNow) && isF(groundAhead)){
-      target = sClamp((groundAhead - groundNow)*0.9, -0.12, 0.16, 0);
-    }
-    w.macFeed += (target - w.macFeed)*sClamp(10*dt, 0, 1, 0);
-    if (!isF(w.macFeed)) w.macFeed = 0;
   }
-}
 
-let x3fFeedSm = 0;
-function sampleX3F(){
-  let gSum = 0, gN = 0;
-  for (const w of wheels){
-    if (!w.hits) continue;
-    let dS = 0;
-    for (const d of w.rayDbg) if (d.hit) dS += d.d;
-    const dMean = dS / w.hits;
-    if (!isF(dMean)) continue;
+  // sondas à frente: posição prevista pela velocidade real
+  const speed = linV.length();
+  const dist = sClamp(speed*0.30, 1.0, 4.0);
+  if (speed > 0.6){
+    _vd.copy(linV);
+    _vd.addScaledVector(carUp, -_vd.dot(carUp));
+    if (_vd.lengthSq() > 1e-6) _vd.normalize();
+    else _vd.copy(carFwd);
+  } else {
+    _vd.copy(carFwd);
+  }
+  const a = [NaN,NaN,NaN,NaN];
+  for (let i=0;i<4;i++){
+    const w = wheels[i];
     _hp.copy(w.hardLocal).applyQuaternion(carQ).add(carPos);
-    const g = _hp.y - dMean;
-    if (isF(g)){ gSum += g; gN++; }
-  }
-  const groundNow = gN ? gSum/gN : NaN;
-  const list = x3fActiveNodes();
-  let nSum = 0, nCnt = 0;
-  for (const n of list){
-    if (!n.dbg) n.dbg = { d:3.0, hit:false };
-    _o.set(n.p[0], n.p[1], n.p[2]).applyQuaternion(carQ).add(carPos);
-    _ray.origin.x=_o.x; _ray.origin.y=_o.y; _ray.origin.z=_o.z;
+    _lo.copy(_hp).addScaledVector(_vd, dist).addScaledVector(carUp, 1.0);
+    _ray.origin.x=_lo.x; _ray.origin.y=_lo.y; _ray.origin.z=_lo.z;
+    _ray.dir.x=-carUp.x; _ray.dir.y=-carUp.y; _ray.dir.z=-carUp.z;
     let hit = null;
-    if (n.t === 'cam'){
-      _ld.copy(carFwd).multiplyScalar(0.85).addScaledVector(carUp, -1).normalize();
-      _ray.dir.x=_ld.x; _ray.dir.y=_ld.y; _ray.dir.z=_ld.z;
-      try { hit = world.castRay(_ray, 3.2, true, undefined, undefined, undefined, body); } catch(e){}
-      if (hit && isF(hit.toi) && hit.toi >= 0){
-        n.dbg.d = Math.max(hit.toi, 0.05); n.dbg.hit = true;
-        const g = _o.y + _ld.y*n.dbg.d;
-        if (isF(g)){ nSum += g; nCnt++; }
-      } else { n.dbg.hit = false; n.dbg.d = 3.2; }
-    } else {
-      _ray.dir.x=-carUp.x; _ray.dir.y=-carUp.y; _ray.dir.z=-carUp.z;
-      try { hit = world.castRay(_ray, 3.2, true, undefined, undefined, undefined, body); } catch(e){}
-      if (hit && isF(hit.toi) && hit.toi >= 0){
-        n.dbg.d = Math.max(hit.toi, 0.02); n.dbg.hit = true;
-        const g = _o.y - carUp.y*n.dbg.d;
-        if (isF(g)){ nSum += g; nCnt++; }
-      } else { n.dbg.hit = false; n.dbg.d = 3.2; }
+    try { hit = world.castRay(_ray, 6.0, true, undefined, undefined, undefined, body); } catch(e){}
+    if (hit && isF(hit.toi) && hit.toi >= 0){
+      a[i] = _lo.y - Math.max(hit.toi, 0.02);
     }
+    const dbg = lookDbg[i];
+    const endD = (hit && isF(hit.toi)) ? Math.max(hit.toi, 0.05) : 6.0;
+    dbg.ox=_lo.x; dbg.oy=_lo.y; dbg.oz=_lo.z;
+    dbg.ex=_lo.x-carUp.x*endD; dbg.ey=_lo.y-carUp.y*endD; dbg.ez=_lo.z-carUp.z*endD;
+    dbg.hit = !!(hit && isF(hit.toi));
   }
-  let target = 0;
-  if (nCnt >= 2 && isF(groundNow)){
-    const nMean = nSum/nCnt;
-    target = sClamp((nMean - groundNow)*0.55, -0.12, 0.16, 0);
+  let as=0, an=0;
+  for (const v of a) if (isF(v)){ as+=v; an++; }
+  const aheadCM = an ? as/an : 0;
+
+  for (let i=0;i<4;i++){
+    const w = wheels[i];
+    let target = 0;
+    if (isF(plane) && isF(g[i])){
+      target = P.K1*(plane - g[i]);
+      if (isF(a[i]) && an > 0){
+        target += P.K2*((plane - a[i]) - (plane - aheadCM));
+      }
+    }
+    const tgt = sClamp(target, -P.CL, P.CL, 0);
+    const rt = P.RT*dt;
+    let cur = kind==='x3f' ? w.x3fFeed : w.macFeed;
+    cur += sClamp(tgt - cur, -rt, rt, 0);
+    if (!isF(cur)) cur = 0;
+    if (kind==='x3f') w.x3fFeed = cur; else w.macFeed = cur;
   }
-  x3fFeedSm += (target - x3fFeedSm)*0.30;
-  if (!isF(x3fFeedSm)) x3fFeedSm = 0;
-  for (const w of wheels) w.x3fFeed = x3fFeedSm;
 }
 
 let x3fAcc = 0;
@@ -2781,9 +2863,9 @@ function physicsStep(dt){
   jumpCd -= dt;
   const sh = keys.has('ShiftLeft') || keys.has('ShiftRight');
   if (sh && !shiftPrev && jumpCd <= 0){
-    let g = 0;
-    for (const w of wheels) if (w.grounded && w.comp > 0.03) g++;
-    if (g >= 2){
+    let gN = 0;
+    for (const w of wheels) if (w.grounded && w.comp > 0.03) gN++;
+    if (gN >= 2){
       let mRaw = NaN;
       try { mRaw = body.mass(); } catch(e){}
       const m = (isF(mRaw) && mRaw > 1) ? mRaw : 760;
@@ -2804,14 +2886,19 @@ function physicsStep(dt){
     }
   }
 
-  if (suspType==='mac') macLookAhead(dt);
-  if (suspType==='x3f'){
+  if (suspType==='mac'){
+    predictiveFeeds('mac', dt);
+  } else if (suspType==='x3f'){
     x3fAcc += dt;
-    const per = 1/sClamp(x3fHz, 12, 624, 120);
+    const hz = sClamp(x3fHz, 12, 624, 120);
+    const per = 1/hz;
     let n = 0;
-    while (x3fAcc >= per && n < 12){ sampleX3F(); x3fAcc -= per; n++; }
+    while (x3fAcc >= per && n < 12){ predictiveFeeds('x3f', per); x3fAcc -= per; n++; }
     if (n >= 12) x3fAcc = 0;
-  } else { x3fAcc = 0; x3fFeedSm = 0; }
+  } else {
+    x3fAcc = 0;
+    for (const w of wheels){ w.macFeed = 0; w.x3fFeed = 0; }
+  }
 
   for (const w of wheels) suspension(w, dt);
 
@@ -2842,7 +2929,7 @@ function updateWheelVisual(w, dt){
   const v = w.v;
   const bjl = _v1.set(w.x - w.sx*0.06, yW-0.10, w.z);
   const bju = _v2.set(w.x - w.sx*0.10, yW+0.27, w.z);
-  if (v.type==='double' || v.type==='single' || suspType==='x3f' || suspType==='lowrider'){
+  if (v.type==='double' || v.type==='single' || suspType==='x3f' || suspType==='lowrider' || suspType==='sphere'){
     placeCyl(v.lF.m, v.lF.p, bjl, 0.026);
     placeCyl(v.lR.m, v.lR.p, bjl, 0.026);
     if (v.uF){ placeCyl(v.uF.m, v.uF.p, bju, 0.024); placeCyl(v.uR.m, v.uR.p, bju, 0.024); }
@@ -2879,17 +2966,34 @@ function updateVisuals(dt){
     let pi = 0, qi = 0;
     for (const w of wheels){
       _v3.copy(w.hardLocal).applyQuaternion(carQ).add(carPos);
-      for (let i=0;i<RAY_OFFSETS.length;i++){
-        const dbg = w.rayDbg[i], ro = RAY_OFFSETS[i];
-        _v4.copy(_v3).addScaledVector(carRight, ro.x).addScaledVector(carFwd, ro.z);
-        const d = dbg.hit ? Math.max(dbg.d, 0.02) : rl;
-        _v5.copy(_v4).addScaledVector(carUp, -d);
-        rayPos[pi++]=_v4.x; rayPos[pi++]=_v4.y; rayPos[pi++]=_v4.z;
-        rayPos[pi++]=_v5.x; rayPos[pi++]=_v5.y; rayPos[pi++]=_v5.z;
-        const r = dbg.hit?1.0:0.55, g = dbg.hit?0.63:0.53, b = dbg.hit?0.24:0.48;
-        rayCol[pi-6]=r; rayCol[pi-5]=g; rayCol[pi-4]=b;
-        rayCol[pi-3]=r; rayCol[pi-2]=g; rayCol[pi-1]=b;
-        if (dbg.hit){ ptPos[qi++]=_v5.x; ptPos[qi++]=_v5.y; ptPos[qi++]=_v5.z; }
+      if (suspType==='sphere'){
+        // 3 sondas de esfera por roda
+        const offs = [0, -0.12, 0.12];
+        for (let ci=0; ci<3; ci++){
+          const dbg = w.rayDbg[ci];
+          _v4.copy(_v3).addScaledVector(carRight, offs[ci]);
+          const d = dbg.hit ? Math.max(dbg.d, 0.02) : rl;
+          _v5.copy(_v4).addScaledVector(carUp, -d);
+          rayPos[pi++]=_v4.x; rayPos[pi++]=_v4.y; rayPos[pi++]=_v4.z;
+          rayPos[pi++]=_v5.x; rayPos[pi++]=_v5.y; rayPos[pi++]=_v5.z;
+          const r = dbg.hit?0.21:0.45, g = dbg.hit?0.88:0.78, b = dbg.hit?0.78:0.62;
+          rayCol[pi-6]=r; rayCol[pi-5]=g; rayCol[pi-4]=b;
+          rayCol[pi-3]=r; rayCol[pi-2]=g; rayCol[pi-1]=b;
+          if (dbg.hit){ ptPos[qi++]=_v5.x; ptPos[qi++]=_v5.y; ptPos[qi++]=_v5.z; }
+        }
+      } else {
+        for (let i=0;i<RAY_OFFSETS.length;i++){
+          const dbg = w.rayDbg[i], ro = RAY_OFFSETS[i];
+          _v4.copy(_v3).addScaledVector(carRight, ro.x).addScaledVector(carFwd, ro.z);
+          const d = dbg.hit ? Math.max(dbg.d, 0.02) : rl;
+          _v5.copy(_v4).addScaledVector(carUp, -d);
+          rayPos[pi++]=_v4.x; rayPos[pi++]=_v4.y; rayPos[pi++]=_v4.z;
+          rayPos[pi++]=_v5.x; rayPos[pi++]=_v5.y; rayPos[pi++]=_v5.z;
+          const r = dbg.hit?1.0:0.55, g = dbg.hit?0.63:0.53, b = dbg.hit?0.24:0.48;
+          rayCol[pi-6]=r; rayCol[pi-5]=g; rayCol[pi-4]=b;
+          rayCol[pi-3]=r; rayCol[pi-2]=g; rayCol[pi-1]=b;
+          if (dbg.hit){ ptPos[qi++]=_v5.x; ptPos[qi++]=_v5.y; ptPos[qi++]=_v5.z; }
+        }
       }
     }
     rayGeo.setDrawRange(0, pi/3);
@@ -2927,17 +3031,13 @@ function updateVisuals(dt){
     xnGeo.attributes.position.needsUpdate = true;
     xnGeo.attributes.color.needsUpdate = true;
   }
-  lookLines.visible = raysVisible && suspType==='mac';
+  lookLines.visible = raysVisible && (suspType==='mac' || suspType==='x3f');
   if (lookLines.visible){
     let i = 0;
     for (let sIdx=0;sIdx<4;sIdx++){
-      const w = wheels[sIdx];
-      _v4.copy(w.hardLocal).applyQuaternion(carQ).add(carPos).addScaledVector(carUp, 0.6);
-      _v5.copy(carFwd).multiplyScalar(0.85).addScaledVector(carUp, -1).normalize();
-      const d = Math.max(lookDbg[sIdx].d, 0.05);
-      _v6.copy(_v4).addScaledVector(_v5, d);
-      lookPos[i++]=_v4.x; lookPos[i++]=_v4.y; lookPos[i++]=_v4.z;
-      lookPos[i++]=_v6.x; lookPos[i++]=_v6.y; lookPos[i++]=_v6.z;
+      const d = lookDbg[sIdx];
+      lookPos[i++]=d.ox; lookPos[i++]=d.oy; lookPos[i++]=d.oz;
+      lookPos[i++]=d.ex; lookPos[i++]=d.ey; lookPos[i++]=d.ez;
     }
     lookGeo.attributes.position.needsUpdate = true;
   }
@@ -2999,13 +3099,14 @@ function updateHUD(dt){
   else if (Math.abs(fwd) < 0.5 && throttle===0) gear = 'N';
   gearEl.textContent = gear;
   gearEl.classList.toggle('rev', gear==='R');
-  raysInd.textContent = `CONTACTS ${totalHits}/${RAY_OFFSETS.length*4}`;
+  const nC = suspType==='sphere' ? 3 : RAY_OFFSETS.length;
+  raysInd.textContent = `CONTACTS ${totalHits}/${nC*4}`;
   wheels.forEach((w,i)=>{
     const t = telRefs[i];
     t.bar.style.transform = `scaleY(${sClamp(w.comp/CFG.maxComp, 0, 1, 0)})`;
     t.bar.classList.toggle('air', !w.grounded || w.comp<=0);
     t.load.textContent = (sClamp(w.load, -1e5, 1e5, 0)/1000).toFixed(1)+' kN';
-    t.hits.textContent = w.hits+'/'+RAY_OFFSETS.length;
+    t.hits.textContent = w.hits+'/'+nC;
   });
   stripAcc += dt;
   if (stripAcc > 0.25){
@@ -3037,7 +3138,7 @@ function updateHUD(dt){
   }
 }
 
-/* ---- BOOT FINAL — estágios com try/catch + fallback ---- */
+/* ---- BOOT FINAL ---- */
 bootMsg.textContent = 'montando carro…';
 try {
   loadCar();
