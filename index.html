@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WB-6 — Chassi Raycast · Softbody Seguro + X3F Nodes</title>
+<title>WB-6 — Chassi Raycast · Suspensão Realista</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
@@ -27,8 +27,17 @@
   .boot-bar::after{content:'';position:absolute;top:0;bottom:0;left:-40%;width:40%;
     background:var(--accent);animation:scan 1s linear infinite}
   @keyframes scan{to{left:100%}}
-  #boot-msg{font-size:11px;color:var(--dim);letter-spacing:.12em;min-height:14px}
+  #boot-msg{font-size:11px;color:var(--dim);letter-spacing:.12em;min-height:14px;text-align:center}
   #boot-msg.err{color:var(--hot)}
+  #boot-detail{font-size:9.5px;color:var(--dim);line-height:1.9;max-width:80vw;
+    white-space:pre-wrap;word-break:break-all;display:none;text-align:center}
+  #boot-detail.show{display:block}
+  #boot-btns{display:none;gap:8px;margin-top:6px}
+  #boot-btns.show{display:flex}
+  .bbtn{font-family:inherit;font-size:10px;letter-spacing:.1em;padding:8px 14px;background:#191813;
+    border:1px solid var(--line);color:var(--ink);cursor:pointer}
+  .bbtn:hover{border-color:var(--accent);color:var(--accent)}
+  .bbtn.warn:hover{border-color:var(--hot);color:var(--hot)}
 
   #toast{position:fixed;top:18px;left:50%;transform:translateX(-50%);z-index:55;
     background:var(--panel);border:1px solid var(--accent);color:var(--accent);
@@ -45,7 +54,6 @@
   .p-title .chips{margin-top:10px;display:flex;gap:6px;flex-wrap:wrap}
   .chip{font-size:9px;letter-spacing:.12em;padding:3px 7px;border:1px solid var(--line);color:var(--dim)}
   .chip.on{color:#151410;background:var(--accent);border-color:var(--accent)}
-  .chip.sb{color:var(--cyan);border-color:var(--cyan)}
 
   .p-speed{top:18px;right:18px;text-align:right;min-width:158px}
   .spd-row{display:flex;align-items:baseline;justify-content:flex-end;gap:7px}
@@ -105,7 +113,6 @@
   .m-sec{margin-bottom:15px}
   .m-sec.last{margin-bottom:2px}
   .m-label{font-size:9px;letter-spacing:.2em;color:var(--dim);margin-bottom:8px}
-  .m-label.x{color:var(--cyan)}
   .m-note{font-size:9.5px;color:var(--dim);line-height:1.8}
   .m-note b{color:var(--ink)}
   .preset-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
@@ -129,7 +136,6 @@
   .sw i::after{content:'';position:absolute;top:2px;left:2px;width:12px;height:12px;background:#57534a;transition:.15s}
   .sw input:checked + i{background:var(--accent);border-color:var(--accent)}
   .sw input:checked + i::after{left:18px;background:#151410}
-  .sw.cy input:checked + i{background:var(--cyan);border-color:var(--cyan)}
   input[type=range]{accent-color:var(--accent)}
   .tin{width:110px;background:#191813;border:1px solid var(--line);color:var(--ink);
     font-family:inherit;font-size:10.5px;padding:3px 6px}
@@ -172,9 +178,14 @@
 
 <div id="boot">
   <div class="boot-title">WB<b>—</b>6</div>
-  <div class="boot-sub">SOFTBODY SEGURO · X3F NODES · 231 RAYS</div>
+  <div class="boot-sub">SUSPENSÃO REALISTA · 5 SUSPENSÕES · MP</div>
   <div class="boot-bar"></div>
-  <div id="boot-msg">carregando módulos…</div>
+  <div id="boot-msg">iniciando…</div>
+  <div id="boot-detail"></div>
+  <div id="boot-btns">
+    <button class="bbtn" id="boot-retry">TENTAR DE NOVO</button>
+    <button class="bbtn warn" id="boot-wipe">APAGAR SAVE E RECARREGAR</button>
+  </div>
 </div>
 
 <div id="toast"></div>
@@ -188,7 +199,6 @@
       <span class="chip on" id="chip-lights">FARÓIS</span>
       <span class="chip on" id="chip-rays">DEBUG RAYS</span>
       <span class="chip" id="chip-mp" style="display:none">MP</span>
-      <span class="chip sb" id="chip-sb" style="display:none">SOFTBODY</span>
     </div>
   </div>
   <div class="panel p-speed">
@@ -250,7 +260,7 @@
       <div class="row-line" style="margin-top:8px;border-top:1px dashed var(--line);padding-top:8px">
         <span id="m-netstatus">desconectado</span>
         <button class="mbtn warn" id="m-leave" disabled>SAIR</button></div>
-      <div class="m-note">a suspensão dos outros pilotos é simulada no seu cliente por raycasts locais — ligue o debug (G). chat com <b>;</b>.</div>
+      <div class="m-note">suspensão remota simulada localmente (debug com G) · chat com <b>;</b>.</div>
     </div>
 
     <div class="m-sec">
@@ -290,40 +300,12 @@
     </div>
 
     <div class="m-sec">
-      <div class="m-label x">EXPERIMENTAL — SOFTBODY</div>
-      <div class="row-line"><span>habilitar softbody <span class="dim">(desliga em multiplayer)</span></span>
-        <label class="sw cy"><input type="checkbox" id="sb-on"><i></i></label></div>
-      <div class="row-line"><span>modelo</span>
-        <select class="e-select" id="sb-model" style="width:200px">
-          <option value="nodebeam">NODE-BEAM (nós e vigas)</option>
-          <option value="fem" disabled>FEM — indisponível no perfil low-end</option>
-        </select></div>
-      <div class="row-line"><span>preservação de volume (anti-colapso)</span>
-        <label class="sw cy"><input type="checkbox" id="sb-vol"><i></i></label></div>
-      <div class="row-line"><span>detecção de colisão em camadas (casting rays)</span>
-        <label class="sw cy"><input type="checkbox" id="sb-layers"><i></i></label></div>
-      <div class="row-line"><span>quantia de casting rays <b id="sb-raysv">128</b> <span class="dim">(32–5000)</span></span>
-        <input type="number" id="sb-rays" class="tin" min="32" max="5000" step="1" value="128"></div>
-      <div class="row-line"><span>self-collision</span>
-        <label class="sw cy"><input type="checkbox" id="sb-self"><i></i></label></div>
-      <div class="row-line"><span>resolução de colisão contínua</span>
-        <label class="sw cy"><input type="checkbox" id="sb-ccd"><i></i></label></div>
-      <div class="row-line"><span>taxa do softbody <span class="dim">(digite 50–10000)</span></span>
-        <span style="display:flex;align-items:center;gap:6px">
-          <input type="number" id="sb-hz" class="tin" min="50" max="10000" step="1" value="120">
-          <b id="sb-hzv" style="min-width:44px">120 Hz</b>
-        </span></div>
-      <div id="sb-stats" class="m-note"></div>
-      <div class="m-note">proteções: orçamento de 3,5 ms/frame, muro de rays refrescado em lotes, cap de 64 planos por nó, kill-switch de explosão. acima disso a taxa efetiva cai (o contador mostra a real).</div>
-    </div>
-
-    <div class="m-sec">
       <div class="m-label">FÍSICA — SUSPENSÃO</div>
       <div class="row-line"><span>raycasts por roda <b id="m-rays-n">6</b> <span class="dim">(1–231)</span></span>
         <input type="range" id="m-rays" min="1" max="231" step="1" value="6"></div>
       <div class="row-line"><span>oclusão por raycast <span class="dim">(desligue se algo sumir)</span></span>
         <label class="sw"><input type="checkbox" id="m-occ"><i></i></label></div>
-      <div class="m-note">CCD no carro e caixotes · bump-stop progressivo · SHIFT pula.</div>
+      <div class="m-note">raycast puro + barra anti-roll + bump-stop progressivo · CCD · SHIFT pula.</div>
     </div>
 
     <div class="m-sec">
@@ -370,7 +352,7 @@
         <button class="pbtn" id="e-add-cyl">+ CILINDRO</button>
         <button class="pbtn" id="e-add-wedge">+ CUNHA</button>
       </div>
-      <div class="m-note" style="margin-top:7px">clique numa peça do carro para selecionar · <b>DEL</b> apaga a selecionada</div>
+      <div class="m-note" style="margin-top:7px">clique numa peça para selecionar · <b>DEL</b> apaga a selecionada</div>
       <div class="row-line"><span id="e-selname">— nenhuma seleção —</span>
         <button class="mbtn warn" id="e-del" disabled>DELETAR</button></div>
     </div>
@@ -405,7 +387,7 @@
       <select class="e-select" id="e-susp">
         <option value="double">DOUBLE WISHBONE</option>
         <option value="single">SINGLE WISHBONE</option>
-        <option value="mac">MACPHERSON — pré-vê o terreno (rays na visão do carro)</option>
+        <option value="mac">MACPHERSON — pré-vê o terreno (estável)</option>
         <option value="leaf">LEAF SPRING</option>
         <option value="x3f">X3F SPRING — sensores/câmeras + editor</option>
         <option value="lowrider">LOW RIDER — hidráulica por teclas</option>
@@ -419,13 +401,13 @@
             <option value="single">SINGLE WISHBONE</option>
           </select></div>
 
-        <div class="m-label" style="margin-top:8px">EDITOR DE SENSORES — SENSOR (sente o solo) · CÂMERA (vê e prevê)</div>
+        <div class="m-label" style="margin-top:8px">EDITOR DE SENSORES — SENSOR (sente) · CÂMERA (vê e prevê)</div>
         <div class="e-btnrow">
           <button class="pbtn" id="e-x3f-adds">+ SENSOR</button>
           <button class="pbtn" id="e-x3f-addc">+ CÂMERA</button>
           <button class="mbtn" id="e-x3f-clear">LIMPAR</button>
         </div>
-        <div class="m-note">clique num pod no carro (sensor ciano · câmera âmbar) para selecionar e editar posição · sem nós, o X3F usa os 6 fixos de fábrica</div>
+        <div class="m-note">clique num pod para selecionar · a posição em Y NÃO afeta o feed (compara alturas absolutas do solo)</div>
         <div id="e-x3fedit" class="dis" style="display:none">
           <div class="row-line"><span id="e-x3fname">—</span>
             <button class="mbtn warn" id="e-x3f-del" disabled>DELETAR</button></div>
@@ -455,17 +437,97 @@
 </div>
 
 <script type="module">
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
-
 /* ============================================================
-   [0] HELPERS ANTI-NaN
+   [B] BOOT RESILIENTE — espelhos + timeout + estágios + watchdog
 ============================================================ */
+const bootEl = document.getElementById('boot');
+const bootMsg = document.getElementById('boot-msg');
+const bootDetail = document.getElementById('boot-detail');
+const bootBtns = document.getElementById('boot-btns');
 const isF = v => typeof v === 'number' && Number.isFinite(v);
 function sClamp(v, lo, hi, def = 0){
   if (!isF(v)) v = def;
   return v < lo ? lo : v > hi ? hi : v;
 }
 const numSafe = (v, def) => isF(+v) ? +v : def;
+
+function importWithTimeout(url, ms){
+  return Promise.race([
+    import(/* @vite-ignore */ url),
+    new Promise((_, rej)=>setTimeout(()=>rej(new Error('timeout ' + ms/1000 + 's')), ms))
+  ]);
+}
+async function importMirror(name, urls, onTry){
+  for (let i=0;i<urls.length;i++){
+    onTry(name, i+1, urls.length);
+    try {
+      const m = await importWithTimeout(urls[i], 15000);
+      if (m) return m;
+    } catch(e){}
+  }
+  throw new Error(name + ': nenhum espelho respondeu');
+}
+function bootFail(title, detail){
+  bootMsg.innerHTML = title;
+  bootMsg.classList.add('err');
+  bootDetail.textContent = String(detail || '').slice(0, 900);
+  bootDetail.classList.add('show');
+  bootBtns.classList.add('show');
+}
+document.getElementById('boot-retry').addEventListener('click', ()=>location.reload());
+document.getElementById('boot-wipe').addEventListener('click', ()=>{
+  try {
+    localStorage.removeItem('wb6.state.v2');
+    localStorage.removeItem('wb6.cfg.v2');
+    localStorage.removeItem('wb6.car.v2');
+  } catch(e){}
+  location.reload();
+});
+
+const bootStages = [];
+let booted = false;
+setTimeout(()=>{
+  if (!booted){
+    bootFail('O CARREGAMENTO DEMOROU DEMAIS',
+      'estágios concluídos:\n' + (bootStages.join('\n') || '(nenhum)') +
+      '\n\núltima mensagem: ' + bootMsg.textContent);
+  }
+}, 25000);
+
+let THREE;
+try {
+  THREE = await importMirror('three.js', [
+    'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js',
+    'https://unpkg.com/three@0.160.0/build/three.module.js',
+    'https://esm.sh/three@0.160.0'
+  ], (nm, i, n)=>{ bootMsg.textContent = 'carregando three.js (espelho ' + i + '/' + n + ')…'; });
+  bootStages.push('OK  three.js');
+} catch(err){
+  bootFail('FALHA AO CARREGAR O THREE.JS', err.message);
+  throw err;
+}
+
+let RAPIER;
+try {
+  const m = await importMirror('rapier', [
+    'https://cdn.jsdelivr.net/npm/@dimforge/rapier3d-compat@0.12.0/+esm',
+    'https://esm.sh/@dimforge/rapier3d-compat@0.12.0',
+    'https://cdn.jsdelivr.net/npm/@dimforge/rapier3d-compat@0.12.0/rapier.es.js'
+  ], (nm, i, n)=>{ bootMsg.textContent = 'carregando rapier (espelho ' + i + '/' + n + ')…'; });
+  RAPIER = (m.default && m.default.init) ? m.default : m;
+  bootMsg.textContent = 'compilando wasm…';
+  await Promise.race([
+    RAPIER.init(),
+    new Promise((_, rej)=>setTimeout(()=>rej(new Error('timeout no init do wasm')), 20000))
+  ]);
+  bootStages.push('OK  rapier + wasm');
+} catch(err){
+  bootFail('FALHA AO CARREGAR O RAPIER', err.message);
+  throw err;
+}
+
+const clamp = THREE.MathUtils.clamp;
+const UP = new THREE.Vector3(0, 1, 0);
 function numArr(a, n){
   if (!Array.isArray(a) || a.length < n) return null;
   const out = [];
@@ -483,22 +545,6 @@ function sanitizeCode(v){
   return String(v == null ? '' : v).replace(/[^a-zA-Z0-9\-_]/g,'').slice(0,16);
 }
 
-const bootEl = document.getElementById('boot');
-const bootMsg = document.getElementById('boot-msg');
-let RAPIER;
-try {
-  const m = await import('https://cdn.jsdelivr.net/npm/@dimforge/rapier3d-compat@0.12.0/+esm');
-  RAPIER = (m.default && m.default.init) ? m.default : m;
-  await RAPIER.init();
-} catch (err) {
-  bootMsg.textContent = 'falha ao carregar o Rapier via CDN — verifique a conexão.';
-  bootMsg.classList.add('err');
-  throw err;
-}
-
-const clamp = THREE.MathUtils.clamp;
-const UP = new THREE.Vector3(0, 1, 0);
-
 /* ============================================================
    [1] CONFIG
 ============================================================ */
@@ -507,8 +553,7 @@ const PRESET_NAMES = ['potato','baixo','medio','alto'];
 const SUSP_NAMES = ['double','single','mac','leaf','x3f','lowrider'];
 
 let cfg = { name:'PILOTO', preset:'potato', lights:true, rays:true, rayCount:6, occ:true,
-            snd:true, vol:70, up:{ on:true, scale:0.5, pix:false }, proc:{ on:false, seed:'x3f-6' },
-            soft:{ on:false, model:'nodebeam', vol:true, layers:true, rays:128, selfcol:true, ccd:true, hz:120 } };
+            snd:true, vol:70, up:{ on:true, scale:0.5, pix:false }, proc:{ on:false, seed:'x3f-6' } };
 try {
   const s = JSON.parse(localStorage.getItem(LS_CFG) || 'null');
   if (s && typeof s === 'object'){
@@ -523,14 +568,6 @@ try {
     if (s.proc && typeof s.proc === 'object')
       cfg.proc = { on: !!s.proc.on,
         seed: (typeof s.proc.seed === 'string' && s.proc.seed.length <= 32) ? s.proc.seed : 'x3f-6' };
-    if (s.soft && typeof s.soft === 'object')
-      cfg.soft = {
-        on: !!s.soft.on, model:'nodebeam',
-        vol: s.soft.vol !== false, layers: s.soft.layers !== false,
-        rays: sClamp(Math.round(numSafe(s.soft.rays, 128)), 32, 5000, 128),
-        selfcol: s.soft.selfcol !== false, ccd: s.soft.ccd !== false,
-        hz: sClamp(Math.round(numSafe(s.soft.hz, 120)), 50, 10000, 120)
-      };
   }
 } catch(e){}
 function saveCfg(){ try { localStorage.setItem(LS_CFG, JSON.stringify(cfg)); } catch(e){} }
@@ -563,7 +600,7 @@ sun.shadow.camera.near = 1; sun.shadow.camera.far = 70;
 sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.02;
 scene.add(hemi, sun, sun.target);
 
-let envTex = null;
+let envTex = null, pendingEnv = false;
 function buildEnv(){
   const env = new THREE.Scene();
   env.add(new THREE.Mesh(new THREE.SphereGeometry(30,16,12),
@@ -872,7 +909,7 @@ function terrainHeight(x, z){
 }
 const spawnY = (x = 0, z = 0) => terrainHeight(x, z) + 1.0;
 
-/* ---- 4c. MAPA MULTIPLAYER ---- */
+/* ---- 4c. MAPA MULTIPLAYER (lazy) ---- */
 const mpw = { built:false, floorMesh:null, floor:{ col:null }, blocks:[] };
 const mpGreenTex = ()=>{
   const cv = document.createElement('canvas'); cv.width = cv.height = 256;
@@ -920,7 +957,8 @@ function buildMpWorld(){
   mpw.built = true;
 }
 function setMpActive(on){
-  buildMpWorld();
+  if (on) buildMpWorld();
+  if (!mpw.built) return;
   mpw.floorMesh.visible = on;
   toggleFlatCol(mpw.floor, on,
     ()=>RAPIER.ColliderDesc.cuboid(120,0.5,120).setTranslation(0,-0.5,0).setFriction(1.0));
@@ -976,7 +1014,7 @@ function disableProc(silent = false){
 }
 
 /* ============================================================
-   [5] CHASSI — CCD
+   [5] CHASSI — CCD (sem colliders de roda: suspensão raycast pura)
 ============================================================ */
 const body = world.createRigidBody(RAPIER.RigidBodyDesc.dynamic()
   .setTranslation(0,1.0,0).setLinearDamping(0.04).setAngularDamping(0.5)
@@ -987,7 +1025,8 @@ const CFG = {
   rest:0.42, maxComp:0.30, maxDrop:0.18,
   k:32000, c:2900, maxPush:13000, maxPull:5200,
   latC:2400, brakeC:1600, brakeMax:1700,
-  driveF:1150, rrMax:130
+  driveF:1150, rrMax:130,
+  arb:8500            // barra anti-roll (realismo: transferência de carga)
 };
 const COM_LOCAL = new THREE.Vector3(0,-0.125,0);
 
@@ -1015,7 +1054,6 @@ const glassCheap = new THREE.MeshStandardMaterial({ color:0xbfd8d2, roughness:0.
 const lampMat  = new THREE.MeshStandardMaterial({ color:0x2a2620, emissive:0xffe3ae, emissiveIntensity:3.4 });
 const brakeMat = new THREE.MeshStandardMaterial({ color:0x30100c, emissive:0xff2d18, emissiveIntensity:0.25 });
 const revMat   = new THREE.MeshStandardMaterial({ color:0x3a3a34, emissive:0xfff6e0, emissiveIntensity:0.15 });
-const sbShellMat = new THREE.MeshStandardMaterial({ color:0xd97a2b, roughness:0.5, metalness:0.05, flatShading:true });
 
 const chassis = new THREE.Group();
 scene.add(chassis);
@@ -1034,7 +1072,7 @@ function defaultParts(){
 }
 let carParts = [], suspType = 'double', x3fHz = 120;
 let x3fArm = 'double';
-let x3fNodes = [];                    // {t:'sensor'|'cam', p:[x,y,z], dbg:{d,hit}}
+let x3fNodes = [];
 let x3fMeshes = [];
 let lowKeys = [['KeyT','KeyF'],['KeyY','KeyH'],['KeyU','KeyJ'],['KeyI','KeyK']];
 const LR_DEF = lowKeys.map(k=>k.slice());
@@ -1213,7 +1251,7 @@ for (const sx of [1,-1]) for (const z of [1.20,-1.10]){
 regDyn(chassis, new THREE.Vector3(0,0.3,0), 2.4);
 
 /* ============================================================
-   [7] RODAS + SUSPENSÕES VISUAIS (X3F respeita double/single)
+   [7] RODAS + SUSPENSÕES VISUAIS
 ============================================================ */
 const cylGeo = new THREE.CylinderGeometry(1,1,1,10);
 const bjGeo = new THREE.SphereGeometry(0.055,12,10);
@@ -1250,12 +1288,12 @@ function orientSpring(g, a, b){
   g.scale.set(1, len, 1);
 }
 const SUSP = {
-  double:  { k:1.00, c:1.00, comp:1.00 },
-  single:  { k:1.05, c:1.00, comp:1.00 },
-  mac:     { k:0.95, c:1.05, comp:1.00 },
-  leaf:    { k:0.80, c:1.25, comp:1.15 },
-  x3f:     { k:1.00, c:1.00, comp:1.00 },
-  lowrider:{ k:1.00, c:1.15, comp:1.00 }
+  double:  { k:1.00, c:1.00, comp:1.00, arb:1.00 },
+  single:  { k:1.05, c:1.00, comp:1.00, arb:1.00 },
+  mac:     { k:0.95, c:1.05, comp:1.00, arb:0.85 },
+  leaf:    { k:0.80, c:1.25, comp:1.15, arb:0.50 },
+  x3f:     { k:1.00, c:1.00, comp:1.00, arb:1.00 },
+  lowrider:{ k:1.00, c:1.15, comp:1.00, arb:1.00 }
 };
 
 function buildWheel(x, z, front, sx){
@@ -1280,6 +1318,7 @@ function buildWheel(x, z, front, sx){
     x, z, front, sx, hardLocal:new THREE.Vector3(x,CFG.hardY,z),
     steer:0, spin:0, spinVel:0, comp:0, load:0, len:CFG.rest, hits:0, grounded:false,
     normal:new THREE.Vector3(0,1,0), distV:0.70, distVSm:0.70, macFeed:0, x3fFeed:0, lowCmd:0,
+    prevPairComp:0, pair:null, idx:0,
     rayDbg:[], v:{ type:'double' }, frame, steerG, spinG, susG
   };
 }
@@ -1287,6 +1326,7 @@ const wheels = [
   buildWheel(+0.95,+1.15,true,+1), buildWheel(-0.95,+1.15,true,-1),
   buildWheel(+0.95,-1.15,false,+1), buildWheel(-0.95,-1.15,false,-1)
 ];
+wheels.forEach((w,i)=>{ w.idx = i; w.pair = wheels[i^1]; });
 for (const w of wheels) regDyn(w.frame, new THREE.Vector3(w.x,-0.35,w.z), 1.2);
 
 function rebuildSuspensionVisuals(){
@@ -1334,7 +1374,6 @@ function rebuildSuspensionVisuals(){
   rebuildX3FPods();
 }
 
-/* ---- pods de sensor/câmera do X3F (editor clicável) ---- */
 function rebuildX3FPods(){
   for (const m of x3fMeshes) chassis.remove(m);
   x3fMeshes.length = 0;
@@ -1666,7 +1705,6 @@ function netHost(code, priv){
   } catch(e){ net = null; toast('BROADCASTCHANNEL INDISPONÍVEL NESTE NAVEGADOR'); return; }
   net.bc.onmessage = onNetMsg;
   addChatMsg('SISTEMA', 'servidor "' + code + '" criado (' + (priv?'privado':'público') + ')', true);
-  softSuppress(true);
   enterMpWorld();
   toast('SERVIDOR "' + code.toUpperCase() + '" CRIADO — MAPA MP CARREGADO');
   updateMenuUI();
@@ -1680,7 +1718,6 @@ function netJoin(code){
   net.bc.onmessage = onNetMsg;
   netSend({ t:'join', id:NET_ID, n:cfg.name });
   addChatMsg('SISTEMA', 'você entrou no servidor "' + code + '"', true);
-  softSuppress(true);
   enterMpWorld();
   toast('ENTRANDO NO SERVIDOR "' + code.toUpperCase() + '"');
   updateMenuUI();
@@ -1691,7 +1728,6 @@ function netLeave(silent){
   try { net.bc.close(); } catch(e){}
   for (const p of net.peers.values()) removeRemote(p);
   net = null;
-  softSuppress(false);
   if (!silent){
     addChatMsg('SISTEMA', 'você saiu do servidor', true);
     leaveMpWorld();
@@ -1816,438 +1852,6 @@ chatIn.addEventListener('keydown', e=>{
 });
 
 /* ============================================================
-   [10b] SOFTBODY NODE-BEAM — v2 À PROVA DE TRAVAMENTO
-   Correções do freeze:
-   1. guard de NaN/Inf dos nós ANTES do muro (a causa: hash
-      de NaN colapsava células → 84 nós × 5000 planos ×
-      10 substeps = milhões de iterações/frame);
-   2. muro de rays INCREMENTAL (lote/frame, refresco em ~6);
-   3. cap de 64 planos por nó no cache;
-   4. orçamento de tempo 3,5 ms/frame nos substeps;
-   5. kill-switch de explosão (nó a >6 m do carro → reset);
-   6. softbody não roda com menu/editor abertos.
-============================================================ */
-const SB_SKIN=0.20, SB_KA=26000, SB_CA=260, SB_KB=42000, SB_CB=170,
-      SB_KSEP=5000, SB_DMIN=0.22, SB_KVOL=9000, SB_KCON=9000, SB_CCON=260, SB_VMAX=40,
-      SB_BUDGET=0.0035, SB_PLANOCAP=64;
-const _sbA = new THREE.Vector3(), _sbB = new THREE.Vector3(), _sbC = new THREE.Vector3(),
-      _sbD = new THREE.Vector3(), _sbE = new THREE.Vector3(), _sbG = new THREE.Vector3();
-const SB = {
-  on:false, sup:false, built:false,
-  nodes:[], beams:[], faceIdx:[], conn:null, nodeWall:[],
-  mesh:null, posAttr:null,
-  wall:{ n:0, data:new Float32Array(5000*6), hash:new Map(),
-         pend:0, cursor:0, newData:null, newHash:new Map(), ready:false },
-  dirs:{ n:0, arr:null },
-  acc:0, wallAcc:0, effHz:0, maxR:2.0, v0:1, grace:0, killT:0
-};
-function sbHashKey(x, y, z){
-  return ((Math.floor(x)+512)&2047) | (((Math.floor(y)+512)&2047)<<11) | (((Math.floor(z)+512)&2047)<<22);
-}
-function sbNodesSane(){
-  for (const nde of SB.nodes)
-    if (!isF(nde.p.x + nde.p.y + nde.p.z + nde.v.x + nde.v.y + nde.v.z)) return false;
-  return true;
-}
-function sbVolume(outC){
-  const f = SB.faceIdx, nd = SB.nodes;
-  let V = 0, Cx = 0, Cy = 0, Cz = 0;
-  for (let t = 0; t < f.length; t += 3){
-    const A = nd[f[t]].p, B = nd[f[t+1]].p, C2 = nd[f[t+2]].p;
-    Cx += A.x + B.x + C2.x; Cy += A.y + B.y + C2.y; Cz += A.z + B.z + C2.z;
-    V += A.x*(B.y*C2.z - B.z*C2.y) - A.y*(B.x*C2.z - B.z*C2.x) + A.z*(B.x*C2.y - B.y*C2.x);
-  }
-  V /= 6;
-  const n3 = f.length || 1;
-  outC.set(Cx/n3, Cy/n3, Cz/n3);
-  return Math.abs(V);
-}
-function sbBuild(){
-  if (SB.built) return;
-  const nx=4, ny=3, nz=7;
-  const xs=[], ys=[], zs=[];
-  for (let i=0;i<nx;i++) xs.push(-0.8 + 1.6*i/(nx-1));
-  for (let j=0;j<ny;j++) ys.push(-0.30 + 0.70*j/(ny-1));
-  for (let k=0;k<nz;k++) zs.push(-1.7 + 3.4*k/(nz-1));
-  const id=(i,j,k)=>i+nx*(j+ny*k);
-  const N=nx*ny*nz;
-  const nodes=[];
-  let maxR=0;
-  for (let k=0;k<nz;k++)for(let j=0;j<ny;j++)for(let i=0;i<nx;i++){
-    const ax=xs[i], ay=ys[j], az=zs[k];
-    const r0=Math.hypot(ax, ay-0.05, az);
-    maxR=Math.max(maxR, r0);
-    nodes.push({
-      p:new THREE.Vector3(ax,ay,az), v:new THREE.Vector3(), F:new THREE.Vector3(),
-      m:760/N, a:new THREE.Vector3(ax,ay,az),
-      layer: r0>0.72*maxR?2 : r0>0.42*maxR?1:0
-    });
-  }
-  SB.maxR = maxR + 0.15;
-  const beams=[]; const conn=new Set();
-  for (let k=0;k<nz;k++)for(let j=0;j<ny;j++)for(let i=0;i<nx;i++){
-    for (let dk=0;dk<=1;dk++)for(let dj=-1;dj<=1;dj++)for(let di=-1;di<=1;di++){
-      const half = (dk>0) || (dk===0 && dj>0) || (dk===0 && dj===0 && di>0);
-      if (!half) continue;
-      const ii=i+di, jj=j+dj, kk=k+dk;
-      if (ii<0||ii>=nx||jj<0||jj>=ny||kk<0||kk>=nz) continue;
-      const a=id(i,j,k), b=id(ii,jj,kk);
-      const rest=nodes[a].a.distanceTo(nodes[b].a);
-      if (rest<1e-4) continue;
-      beams.push({ a, b, rest, k:SB_KB, c:SB_CB });
-      conn.add(a*1000+b); conn.add(b*1000+a);
-    }
-  }
-  const CORN = [
-    { on:(i)=>i===nx-1, q:[[1,0,0],[1,1,0],[1,1,1],[1,0,1]] },
-    { on:(i)=>i===0,    q:[[0,0,1],[0,1,1],[0,1,0],[0,0,0]] },
-    { on:(i,j)=>j===ny-1, q:[[0,1,0],[0,1,1],[1,1,1],[1,1,0]] },
-    { on:(i,j)=>j===0,    q:[[0,0,1],[0,0,0],[1,0,0],[1,0,1]] },
-    { on:(i,j,k2)=>k2===nz-1, q:[[0,0,1],[1,0,1],[1,1,1],[0,1,1]] },
-    { on:(i,j,k2)=>k2===0,    q:[[1,0,0],[0,0,0],[0,1,0],[1,1,0]] },
-  ];
-  const faces=[];
-  for (let k=0;k<nz;k++)for(let j=0;j<ny;j++)for(let i=0;i<nx;i++)
-    for (const f of CORN){
-      if (!f.on(i,j,k)) continue;
-      const q=f.q.map(d=>id(i+d[0], j+d[1], k+d[2]));
-      faces.push(q[0],q[1],q[2], q[0],q[2],q[3]);
-    }
-  const g=new THREE.BufferGeometry();
-  const pos=new Float32Array(faces.length*3);
-  g.setAttribute('position', new THREE.BufferAttribute(pos,3).setUsage(THREE.DynamicDrawUsage));
-  g.setIndex(faces);
-  g.computeVertexNormals();
-  const mesh=new THREE.Mesh(g, sbShellMat);
-  mesh.visible=false; mesh.castShadow=true; mesh.frustumCulled=false;
-  scene.add(mesh);
-  SB.mesh=mesh; SB.posAttr=g.attributes.position;
-  SB.nodes=nodes; SB.beams=beams; SB.faceIdx=faces; SB.conn=conn;
-  SB.nodeWall = nodes.map(()=>[]);
-  SB.v0 = sbVolume(_sbC);
-  SB.built = true;
-}
-function sbReset(){
-  for (const nde of SB.nodes){
-    nde.p.copy(nde.a).applyQuaternion(carQ).add(carPos);
-    nde.v.copy(linV);
-    if (!finVec(nde.p) || !finVec(nde.v)){ nde.p.copy(carPos); nde.v.set(0,0,0); }
-  }
-  SB.grace = 0.30;
-  SB.wall.ready = false;
-  SB.wall.pend = 0;
-}
-function sbEnable(){
-  sbBuild();
-  sbReset();
-  SB.on = true;
-  SB.mesh.visible = true;
-  for (const p of carParts) p.mesh.visible = false;
-  document.getElementById('chip-sb').style.display = 'inline-block';
-}
-function sbDisable(){
-  SB.on = false;
-  if (SB.mesh) SB.mesh.visible = false;
-  for (const p of carParts) p.mesh.visible = true;
-  document.getElementById('chip-sb').style.display = 'none';
-}
-function softSuppress(on){
-  if (on){
-    if (cfg.soft.on && !SB.sup){
-      SB.sup = true;
-      if (SB.on) sbDisable();
-      toast('SOFTBODY SUSPENSO — MULTIPLAYER ATIVO');
-    }
-  } else if (SB.sup){
-    SB.sup = false;
-    if (cfg.soft.on){
-      sbEnable();
-      toast('SOFTBODY REATIVADO');
-    }
-  }
-}
-function sbDirs(n){
-  if (SB.dirs.n === n && SB.dirs.arr) return SB.dirs.arr;
-  const arr = new Float32Array(n*3);
-  const ga = Math.PI*(3 - Math.sqrt(5));
-  for (let i=0;i<n;i++){
-    const y = 1 - (i+0.5)*2/n;
-    const r = Math.sqrt(Math.max(0, 1 - y*y));
-    const th = ga*i;
-    arr[i*3] = Math.cos(th)*r; arr[i*3+1] = y; arr[i*3+2] = Math.sin(th)*r;
-  }
-  SB.dirs = { n, arr };
-  return arr;
-}
-const _sbRay = new RAPIER.Ray({x:0,y:0,z:0},{x:0,y:1,z:0});
-// muro INCREMENTAL: um lote por frame; troca de buffer só quando completo
-function sbWallChunk(){
-  const w = SB.wall, s = cfg.soft;
-  if (!s.layers){ w.ready = false; w.n = 0; return; }
-  if (!w.pend){
-    w.pend = sClamp(Math.round(s.rays), 32, 5000, 128);
-    w.cursor = 0;
-    w.newData = new Float32Array(w.pend*6);
-    w.newHash = new Map();
-    w.ready = false;
-    return;
-  }
-  let Cx=0, Cy=0, Cz=0;
-  for (const nde of SB.nodes){ Cx+=nde.p.x; Cy+=nde.p.y; Cz+=nde.p.z; }
-  Cx/=SB.nodes.length; Cy/=SB.nodes.length; Cz/=SB.nodes.length;
-  if (![Cx,Cy,Cz].every(isF)){ w.pend = 0; return; }
-  _sbC.set(Cx, Cy, Cz);
-  const dirs = sbDirs(w.pend);
-  const R = SB.maxR*1.25;
-  const perFrame = Math.max(64, Math.ceil(w.pend/6));   // refresco completo em ~6 frames
-  const end = Math.min(w.pend, w.cursor + perFrame);
-  let wn = w.cursor;
-  for (let i=w.cursor;i<end;i++){
-    _sbD.set(dirs[i*3], dirs[i*3+1], dirs[i*3+2]);
-    _sbRay.origin.x=_sbC.x; _sbRay.origin.y=_sbC.y; _sbRay.origin.z=_sbC.z;
-    _sbRay.dir.x=_sbD.x; _sbRay.dir.y=_sbD.y; _sbRay.dir.z=_sbD.z;
-    let hit = null;
-    try { hit = world.castRay(_sbRay, R, true, undefined, undefined, undefined, body); } catch(e){}
-    if (hit && isF(hit.toi) && hit.toi >= 0){
-      const d = Math.min(hit.toi, R);
-      const px = _sbC.x + _sbD.x*d, py = _sbC.y + _sbD.y*d, pz = _sbC.z + _sbD.z*d;
-      let nx=0, ny=1, nz=0;
-      try {
-        const hn = hit.normal;
-        if (hn){
-          const l = Math.hypot(hn.x, hn.y, hn.z);
-          if (l > 1e-5 && isF(hn.x+hn.y+hn.z)){ nx=hn.x/l; ny=hn.y/l; nz=hn.z/l; }
-        }
-      } catch(e){}
-      const o = wn*6;
-      w.newData[o]=px; w.newData[o+1]=py; w.newData[o+2]=pz;
-      w.newData[o+3]=nx; w.newData[o+4]=ny; w.newData[o+5]=nz;
-      const key = sbHashKey(px/0.6, py/0.6, pz/0.6);
-      let arr = w.newHash.get(key);
-      if (!arr){ arr = []; w.newHash.set(key, arr); }
-      arr.push(wn);
-      wn++;
-    }
-  }
-  w.cursor = wn;
-  if (w.cursor >= w.pend - (w.pend - end) && end >= w.pend){
-    // refresh completo: troca e reconstrói cache por nó (cap SB_PLANOCAP)
-    w.data = w.newData; w.hash = w.newHash; w.n = w.cursor;
-    for (let i=0;i<SB.nodeWall.length;i++) SB.nodeWall[i].length = 0;
-    const nd = SB.nodes;
-    for (let i=0;i<nd.length;i++){
-      const nde = nd[i];
-      const cx = Math.floor(nde.p.x/0.6), cy = Math.floor(nde.p.y/0.6), cz = Math.floor(nde.p.z/0.6);
-      let cnt = 0;
-      for (let dx=-1;dx<=1 && cnt<SB_PLANOCAP;dx++)
-      for (let dy=-1;dy<=1 && cnt<SB_PLANOCAP;dy++)
-      for (let dz=-1;dz<=1 && cnt<SB_PLANOCAP;dz++){
-        const arr = w.hash.get(sbHashKey(cx+dx, cy+dy, cz+dz));
-        if (!arr) continue;
-        for (const wi of arr){
-          if (cnt >= SB_PLANOCAP) break;
-          const o = wi*6;
-          const dd = (nde.p.x-w.data[o])*w.data[o+3] + (nde.p.y-w.data[o+1])*w.data[o+4] + (nde.p.z-w.data[o+2])*w.data[o+5];
-          if (dd < SB_SKIN + 0.45){ SB.nodeWall[i].push(wi); cnt++; }
-        }
-      }
-    }
-    w.pend = 0;
-    w.ready = true;
-  }
-}
-function sbStep(h){
-  const nd = SB.nodes, beams = SB.beams, w = SB.wall, s = cfg.soft;
-  for (const nde of nd){
-    nde.F.set(0, -nde.m*19, 0);
-  }
-  for (let bi=0;bi<beams.length;bi++){
-    const b = beams[bi];
-    const A = nd[b.a], B = nd[b.b];
-    _sbA.subVectors(B.p, A.p);
-    const len = _sbA.length();
-    if (len < 1e-5) continue;
-    _sbA.divideScalar(len);
-    const rv = _sbB.subVectors(B.v, A.v).dot(_sbA);
-    let F = b.k*(len - b.rest) + b.c*rv;
-    F = sClamp(F, -20000, 20000, 0);
-    _sbC.copy(_sbA).multiplyScalar(F);
-    A.F.add(_sbC);
-    B.F.sub(_sbC);
-  }
-  let rX=0, rY=0, rZ=0, aCx=0, aCy=0, aCz=0, aN=0;
-  for (let i=0;i<nd.length;i++){
-    const nde = nd[i];
-    _sbA.copy(nde.a).applyQuaternion(carQ).add(carPos);
-    _sbB.subVectors(_sbA, nde.p);
-    pointVel(_sbA, _sbD);
-    _sbE.subVectors(nde.v, _sbD);
-    let fx = _sbB.x*SB_KA - _sbE.x*SB_CA;
-    let fy = _sbB.y*SB_KA - _sbE.y*SB_CA;
-    let fz = _sbB.z*SB_KA - _sbE.z*SB_CA;
-    fx = sClamp(fx, -15000, 15000, 0);
-    fy = sClamp(fy, -15000, 15000, 0);
-    fz = sClamp(fz, -15000, 15000, 0);
-    nde.F.x += fx; nde.F.y += fy; nde.F.z += fz;
-    rX -= fx; rY -= fy; rZ -= fz;
-    aCx += _sbA.x; aCy += _sbA.y; aCz += _sbA.z; aN++;
-  }
-  if (s.vol){
-    const V = sbVolume(_sbC);
-    if (V > 1e-4){
-      const P = sClamp(SB_KVOL*(SB.v0/V - 1), -2500, 25000, 0);
-      if (Math.abs(P) > 1){
-        const f = SB.faceIdx;
-        for (let t=0;t<f.length;t+=3){
-          const A = nd[f[t]].p, B = nd[f[t+1]].p, C2 = nd[f[t+2]].p;
-          const e1x=B.x-A.x, e1y=B.y-A.y, e1z=B.z-A.z;
-          const e2x=C2.x-A.x, e2y=C2.y-A.y, e2z=C2.z-A.z;
-          const cx = (e1y*e2z - e1z*e2y) * (P/6);
-          const cy = (e1z*e2x - e1x*e2z) * (P/6);
-          const cz = (e1x*e2y - e1y*e2x) * (P/6);
-          const FA = nd[f[t]].F, FB = nd[f[t+1]].F, FC = nd[f[t+2]].F;
-          FA.x+=cx; FA.y+=cy; FA.z+=cz;
-          FB.x+=cx; FB.y+=cy; FB.z+=cz;
-          FC.x+=cx; FC.y+=cy; FC.z+=cz;
-        }
-      }
-    }
-  }
-  let cX=0, cY=0, cZ=0, cn=0, ctX=0, ctY=0, ctZ=0;
-  if (s.layers && w.ready && w.n > 0 && SB.grace <= 0){
-    for (let layer=2; layer>=0; layer--){
-      for (let i=0;i<nd.length;i++){
-        const nde = nd[i];
-        if (nde.layer !== layer) continue;
-        const list = SB.nodeWall[i];
-        for (let li=0; li<list.length; li++){
-          const o = list[li]*6;
-          const nx=w.data[o+3], ny=w.data[o+4], nz=w.data[o+5];
-          const dd = (nde.p.x-w.data[o])*nx + (nde.p.y-w.data[o+1])*ny + (nde.p.z-w.data[o+2])*nz;
-          if (dd < SB_SKIN){
-            const pen = SB_SKIN - dd;
-            const vn = nde.v.x*nx + nde.v.y*ny + nde.v.z*nz;
-            let fm = pen*SB_KCON - Math.min(vn,0)*SB_CCON;
-            fm = sClamp(fm, -8000, 25000, 0);
-            const fx=nx*fm, fy=ny*fm, fz=nz*fm;
-            nde.F.x += fx; nde.F.y += fy; nde.F.z += fz;
-            ctX += fx; ctY += fy; ctZ += fz;
-            cX += nde.p.x; cY += nde.p.y; cZ += nde.p.z; cn++;
-          }
-        }
-      }
-    }
-  }
-  if (s.selfcol){
-    for (let i=0;i<nd.length;i++){
-      const A = nd[i];
-      for (let j=i+1;j<nd.length;j++){
-        if (SB.conn.has(i*1000+j)) continue;
-        const B = nd[j];
-        const dx=B.p.x-A.p.x, dy=B.p.y-A.p.y, dz=B.p.z-A.p.z;
-        const d2 = dx*dx+dy*dy+dz*dz;
-        if (d2 < SB_DMIN*SB_DMIN && d2 > 1e-8){
-          const d = Math.sqrt(d2);
-          const f = sClamp(SB_KSEP*(SB_DMIN-d), 0, 6000, 0) / d;
-          const fx=dx*f, fy=dy*f, fz=dz*f;
-          A.F.x-=fx; A.F.y-=fy; A.F.z-=fz;
-          B.F.x+=fx; B.F.y+=fy; B.F.z+=fz;
-        }
-      }
-    }
-  }
-  if (s.ccd && w.ready && w.n > 0 && SB.grace <= 0){
-    for (let i=0;i<nd.length;i++){
-      const nde = nd[i];
-      const list = SB.nodeWall[i];
-      for (let li=0; li<list.length; li++){
-        const o = list[li]*6;
-        const nx=w.data[o+3], ny=w.data[o+4], nz=w.data[o+5];
-        const d0 = (nde.p.x-w.data[o])*nx + (nde.p.y-w.data[o+1])*ny + (nde.p.z-w.data[o+2])*nz;
-        if (d0 <= SB_SKIN) continue;
-        const ex = nde.p.x + nde.v.x*h, ey = nde.p.y + nde.v.y*h, ez = nde.p.z + nde.v.z*h;
-        const d1 = (ex-w.data[o])*nx + (ey-w.data[o+1])*ny + (ez-w.data[o+2])*nz;
-        if (d1 < SB_SKIN && d0 > d1){
-          const t = (d0 - SB_SKIN)/(d0 - d1);
-          nde.p.x += nde.v.x*h*t; nde.p.y += nde.v.y*h*t; nde.p.z += nde.v.z*h*t;
-          const vn = nde.v.x*nx + nde.v.y*ny + nde.v.z*nz;
-          if (vn < 0){ nde.v.x -= nx*vn; nde.v.y -= ny*vn; nde.v.z -= nz*vn; }
-        }
-      }
-    }
-  }
-  for (const nde of nd){
-    nde.v.x += nde.F.x/nde.m*h;
-    nde.v.y += nde.F.y/nde.m*h;
-    nde.v.z += nde.F.z/nde.m*h;
-    const sp = nde.v.length();
-    if (sp > SB_VMAX) nde.v.multiplyScalar(SB_VMAX/sp);
-    nde.p.x += nde.v.x*h; nde.p.y += nde.v.y*h; nde.p.z += nde.v.z*h;
-  }
-  if (aN > 0 && (rX || rY || rZ)){
-    _sbG.set(rX, rY, rZ).multiplyScalar(h);
-    _sbC.set(aCx/aN, aCy/aN, aCz/aN);
-    safeImpulseAtPoint(_sbG, _sbC);
-  }
-  if (cn > 0 && (ctX || ctY || ctZ)){
-    _sbG.set(ctX, ctY, ctZ).multiplyScalar(h);
-    _sbC.set(cX/cn, cY/cn, cZ/cn);
-    safeImpulseAtPoint(_sbG, _sbC);
-  }
-}
-function softUpdate(dt){
-  const active = cfg.soft.on && !net && !SB.sup && !paused();
-  if (SB.on !== active){
-    if (active) sbEnable(); else sbDisable();
-  }
-  if (!SB.on || dt <= 0) return;
-  // GUARD PRINCIPAL: estados inválidos NUNCA chegam ao muro/hash
-  if (!sbNodesSane()){ sbReset(); return; }
-  SB.grace -= dt;
-  // muro incremental (um lote por frame)
-  SB.wallAcc += dt;
-  if (SB.wallAcc >= 1/120){ SB.wallAcc = 0; sbWallChunk(); }
-  if (!sbNodesSane()){ sbReset(); return; }   // chunk não altera nós, mas barato garantir
-  // integração com ORÇAMENTO DE TEMPO
-  const hz = sClamp(Math.round(cfg.soft.hz), 50, 10000, 120);
-  const h = 1/hz;
-  SB.acc += dt;
-  const t0 = performance.now();
-  let steps = 0;
-  while (SB.acc >= h && steps < 10){
-    sbStep(h);
-    SB.acc -= h; steps++;
-    if (performance.now() - t0 > SB_BUDGET*1000) break;   // respeita o frame
-  }
-  if (steps === 10 || performance.now() - t0 > SB_BUDGET*1000) SB.acc = Math.min(SB.acc, h);
-  SB.effHz += (steps/Math.max(dt, 1e-3) - SB.effHz)*0.1;
-  // kill-switch de explosão (0,25s de intervalo)
-  SB.killT += dt;
-  if (SB.killT > 0.25){
-    SB.killT = 0;
-    const lim = 6;
-    for (const nde of SB.nodes){
-      if (Math.abs(nde.p.x-carPos.x) > lim || Math.abs(nde.p.y-carPos.y) > lim ||
-          Math.abs(nde.p.z-carPos.z) > lim){
-        sbReset();
-        toast('SOFTBODY RESETADO (explosão detectada)');
-        break;
-      }
-    }
-  }
-}
-function sbVisual(){
-  if (!SB.on || !SB.posAttr) return;
-  const f = SB.faceIdx, arr = SB.posAttr.array, nd = SB.nodes;
-  for (let t=0;t<f.length;t++){
-    const p = nd[f[t]].p;
-    arr[t*3] = p.x; arr[t*3+1] = p.y; arr[t*3+2] = p.z;
-  }
-  SB.posAttr.needsUpdate = true;
-  SB.mesh.geometry.computeVertexNormals();
-}
-
-/* ============================================================
    [11] TOAST / ENTRADA / MENU / EDITOR
 ============================================================ */
 const toastEl = document.getElementById('toast');
@@ -2308,8 +1912,13 @@ function applyPreset(name, silent = false){
   scene.fog.near = p.fogNear; scene.fog.far = p.fogFar;
   cullFar = p.fogFar + 12;
   renderer.toneMapping = p.tone ? THREE.ACESFilmicToneMapping : THREE.NoToneMapping;
-  if (p.env){ if (!envTex) envTex = buildEnv(); scene.environment = envTex; }
-  else scene.environment = null;
+  if (p.env){
+    if (!envTex && !pendingEnv) pendingEnv = true;   // PMREM adiado pós-primeiro frame
+    scene.environment = envTex || null;
+  } else {
+    scene.environment = null;
+    pendingEnv = false;
+  }
   renderer.shadowMap.enabled = p.shadows;
   sun.castShadow = p.shadows;
   if (p.shadows){
@@ -2347,15 +1956,14 @@ function resetCar(){
   setCarPose(0, spawnY(0,0), worldMode==='mp' ? -24 : 0, 0,0,0,1);
   steerState = 0;
   camPos.set(0, 3.4, worldMode==='mp' ? -33 : -9);
-  if (SB.on) sbReset();
 }
 let nanResets = 0;
 function hardResetCar(){
   setCarPose(0, spawnY(0,0), worldMode==='mp' ? -24 : 0, 0,0,0,1);
   steerState = 0;
-  for (const w of wheels){ w.macFeed=0; w.x3fFeed=0; w.lowCmd=0; w.distVSm=0.70; w.distV=0.70; w.comp=0; w.load=0; w.spinVel=0; }
+  for (const w of wheels){ w.macFeed=0; w.x3fFeed=0; w.lowCmd=0; w.distVSm=0.70; w.distV=0.70; w.comp=0; w.load=0; w.spinVel=0; w.prevPairComp=0; }
+  x3fFeedSm = 0;
   camPos.set(0, 3.4, worldMode==='mp' ? -33 : -9);
-  if (SB.on) sbReset();
   nanResets++;
   toast('ESTADO FÍSICO INVÁLIDO — CARRO REPOSICIONADO');
 }
@@ -2391,7 +1999,6 @@ function setEditor(open){
   }
 }
 
-// ---- editor de peças ----
 let selPart = null, selHelper = null;
 const raycaster = new THREE.Raycaster();
 function selectPart(p){
@@ -2444,9 +2051,6 @@ function restoreDefaultCar(){
   deselectPart();
   selX3f = null;
   rebuildCarPhysics(); saveCar();
-  if (SB.on){
-    for (const p of carParts) p.mesh.visible = false;
-  }
   updateEditorUI();
 }
 let downX = 0, downY = 0;
@@ -2457,7 +2061,6 @@ renderer.domElement.addEventListener('pointerup', e=>{
   const r = renderer.domElement.getBoundingClientRect();
   const ndc = new THREE.Vector2(((e.clientX-r.left)/r.width)*2-1, -((e.clientY-r.top)/r.height)*2+1);
   raycaster.setFromCamera(ndc, camera);
-  // primeiro: pods do X3F (se na suspensão x3f)
   if (suspType === 'x3f' && x3fMeshes.length){
     const hx = raycaster.intersectObjects(x3fMeshes, true);
     if (hx.length){
@@ -2475,7 +2078,6 @@ renderer.domElement.addEventListener('pointerup', e=>{
   else { selX3f = null; deselectPart(); }
 });
 
-// ---- low rider: captura de teclas ----
 let lrCapture = null;
 const LRL = ['ABAIXAR', 'LEVANTAR'];
 const shortKey = c => String(c).replace(/^Key|^Digit/, '');
@@ -2667,14 +2269,6 @@ function netStatusText(){
   return who + ' "' + net.code + '" · ' + (net.priv ? 'privado' : 'público') +
     ' · ' + (net.peers.size + 1) + ' piloto(s) · mapa MP';
 }
-function sbStatsLine(){
-  if (!SB.built) return 'softbody desligado · ative para construir o lattice node-beam';
-  const hz = sClamp(Math.round(cfg.soft.hz), 50, 10000, 120);
-  const warn = cfg.soft.rays > 1500 ? ' · <b style="color:var(--hot)">custo alto</b>' : '';
-  return `<b>${SB.nodes.length}</b> nós · <b>${SB.beams.length}</b> vigas · <b>${SB.faceIdx.length/3}</b> tris · ` +
-    `muro <b>${cfg.soft.layers ? sClamp(Math.round(cfg.soft.rays),32,5000,128) : 0}</b> rays em lotes${warn}<br>` +
-    `alvo <b>${hz} Hz</b> · efetiva <b>${SB.on ? Math.round(SB.effHz) : '—'} Hz</b> · orçamento 3,5 ms/frame`;
-}
 function updateMenuUI(){
   const $ = id => document.getElementById(id);
   document.querySelectorAll('.pbtn[data-preset]').forEach(b=>
@@ -2686,17 +2280,6 @@ function updateMenuUI(){
   $('up-pix').checked = up.pix;
   const s = effScale();
   $('up-res').innerHTML = `interno: <b>${Math.round(innerWidth*s)}×${Math.round(innerHeight*s)}px</b> → tela ${innerWidth}×${innerHeight}`;
-  $('sb-on').checked = cfg.soft.on;
-  $('sb-model').value = 'nodebeam';
-  $('sb-vol').checked = cfg.soft.vol;
-  $('sb-layers').checked = cfg.soft.layers;
-  $('sb-rays').value = cfg.soft.rays;
-  $('sb-raysv').textContent = cfg.soft.rays;
-  $('sb-self').checked = cfg.soft.selfcol;
-  $('sb-ccd').checked = cfg.soft.ccd;
-  $('sb-hz').value = cfg.soft.hz;
-  $('sb-hzv').textContent = cfg.soft.hz + ' Hz';
-  $('sb-stats').innerHTML = sbStatsLine();
   $('m-name').value = cfg.name;
   $('m-priv').classList.toggle('on', hostPriv);
   $('m-pub').classList.toggle('on', !hostPriv);
@@ -2718,9 +2301,12 @@ function updateMenuUI(){
   renderPublicServers();
 }
 function memLine(){
-  const a = (localStorage.getItem(LS_CFG)||'').length;
-  const b = (localStorage.getItem(LS_STATE)||'').length;
-  const c = (localStorage.getItem(LS_CAR)||'').length;
+  let a = 0, b = 0, c = 0;
+  try {
+    a = (localStorage.getItem(LS_CFG)||'').length;
+    b = (localStorage.getItem(LS_STATE)||'').length;
+    c = (localStorage.getItem(LS_CAR)||'').length;
+  } catch(e){}
   return `config <b>${a} B</b> · mundo <b>${b} B</b> · carro <b>${c} B</b> (${carParts.length} peças · ${x3fNodes.length} nós X3F)`;
 }
 function updateMemUI(){
@@ -2732,7 +2318,7 @@ function updateMenuStats(){
     `FPS <b>${fpsEMA|0}</b> · DRAWS <b>${lastCalls}</b> · TRIS <b>${fmtK(lastTris)}</b><br>` +
     `VISÍVEIS <b>${statV}/${cullables.length}</b> · FRUSTUM <b>${statF}</b> · OCLUSÃO <b>${statO}</b> · CACHE <b>${cacheHits}</b><br>` +
     `RESOLUÇÃO <b>${rw}×${rh}</b> → ${innerWidth}×${innerHeight} (${Math.round(effScale()*100)}%)<br>` +
-    `RESYNCS <b>${nanResets}</b> · MUNDO <b>${worldMode.toUpperCase()}</b> · SOFTBODY <b>${SB.on?'ON':'OFF'}</b>`;
+    `RESYNCS <b>${nanResets}</b> · MUNDO <b>${worldMode.toUpperCase()}</b>`;
 }
 function bindMenuUI(){
   const $ = id => document.getElementById(id);
@@ -2761,29 +2347,6 @@ function bindMenuUI(){
     netJoin(code);
   });
   $('m-leave').addEventListener('click', ()=>netLeave(false));
-  $('sb-on').addEventListener('change', e=>{
-    if (e.target.checked && net){
-      e.target.checked = false;
-      toast('SOFTBODY NÃO FUNCIONA EM MULTIPLAYER — SAIA DO SERVIDOR');
-      return;
-    }
-    cfg.soft.on = e.target.checked; saveCfg(); updateMenuUI();
-  });
-  $('sb-vol').addEventListener('change', e=>{ cfg.soft.vol = e.target.checked; saveCfg(); updateMenuUI(); });
-  $('sb-layers').addEventListener('change', e=>{ cfg.soft.layers = e.target.checked; saveCfg(); updateMenuUI(); });
-  $('sb-self').addEventListener('change', e=>{ cfg.soft.selfcol = e.target.checked; saveCfg(); updateMenuUI(); });
-  $('sb-ccd').addEventListener('change', e=>{ cfg.soft.ccd = e.target.checked; saveCfg(); updateMenuUI(); });
-  $('sb-rays').addEventListener('change', e=>{
-    cfg.soft.rays = sClamp(Math.round(+e.target.value), 32, 5000, 128);
-    e.target.value = cfg.soft.rays;
-    SB.wall.pend = 0;   // força refresh do muro com a nova quantia
-    saveCfg(); updateMenuUI();
-  });
-  $('sb-hz').addEventListener('change', e=>{
-    cfg.soft.hz = sClamp(Math.round(+e.target.value), 50, 10000, 120);
-    e.target.value = cfg.soft.hz;
-    saveCfg(); updateMenuUI();
-  });
   $('m-proc').addEventListener('change', e=>{
     if (net){ e.target.checked = (worldMode==='proc'); toast('SAIA DO SERVIDOR PARA TROCAR DE MUNDO'); return; }
     if (e.target.checked) applyProcWorld(($('m-seed').value || 'x3f-6').slice(0,32).trim() || 'x3f-6');
@@ -2966,7 +2529,7 @@ document.addEventListener('visibilitychange', ()=>{
 });
 
 /* ============================================================
-   [13] FÍSICA — bump-stop + SHIFT pula + X3F nodes + anti-NaN
+   [13] FÍSICA — raycast puro + ARB + mac estável + anti-NaN
 ============================================================ */
 const carQ = new THREE.Quaternion();
 const carUp = new THREE.Vector3(), carFwd = new THREE.Vector3(), carRight = new THREE.Vector3();
@@ -3053,9 +2616,16 @@ function suspension(w, dt){
     else if (suspType==='lowrider') feed = w.lowCmd * 0.38;
     let F = CFG.k*sp.k*massF*(comp + feed) + CFG.c*sp.c*massF*vComp;
     F = sClamp(F, -CFG.maxPull*massF, CFG.maxPush*massF, 0);
+    // bump-stop progressivo (suave: quadratic no excesso)
     if (raw > compLim){
-      F += (raw - compLim) * CFG.k * 3 * massF;
-      F = Math.min(F, CFG.maxPush*massF*2.6);
+      const over = raw - compLim;
+      F += CFG.k*massF*(over*2.2 + over*over*6.0);
+      F = Math.min(F, CFG.maxPush*massF*2.4);
+    }
+    // barra anti-roll: diferença de compressão com a roda oposta
+    if (w.pair && w.pair.grounded && w.pair.prevPairComp > 0){
+      const arbF = CFG.arb*sp.arb*massF*(w.pair.prevPairComp - comp);
+      F += sClamp(arbF, -3500*massF, 3500*massF);
     }
     w.load = F;
     _f.copy(_nAcc).multiplyScalar(F*dt);
@@ -3063,6 +2633,7 @@ function suspension(w, dt){
   } else {
     w.comp = 0; w.load = 0; w.len = CFG.rest + CFG.maxDrop; w.normal.copy(carUp);
   }
+  w.prevPairComp = w.grounded ? w.comp : 0;
   tireForces(w, dt, sp);
 }
 function tireForces(w, dt, sp){
@@ -3096,67 +2667,101 @@ function tireForces(w, dt, sp){
 }
 
 const _lo = new THREE.Vector3(), _ld = new THREE.Vector3();
-const lookDbg = wheels.map(()=>({ d:2.8 }));
+const lookDbg = wheels.map(()=>({ d:2.8, hit:false }));
+
+/* ---- MacPherson — SEM loop de realimentação:
+   compara ALTURA do solo à frente (ray look-ahead) com a
+   altura do solo sob a roda (raycasts do passo anterior).
+   Nada depende do estado atual da suspensão → não oscila. ---- */
 function macLookAhead(dt){
   for (let i=0;i<4;i++){
     const w = wheels[i];
+    // solo sob a roda — a partir dos raios verticais já feitos
+    let groundNow = NaN;
+    if (w.hits > 0){
+      let dS = 0;
+      for (const d of w.rayDbg) if (d.hit) dS += d.d;
+      const dMean = dS / w.hits;
+      if (isF(dMean)){
+        _hp.copy(w.hardLocal).applyQuaternion(carQ).add(carPos);
+        groundNow = _hp.y - dMean;
+      }
+    }
+    // solo à frente — ray diagonal do hardpoint
     _lo.copy(w.hardLocal).applyQuaternion(carQ).add(carPos).addScaledVector(carUp, 0.6);
     _ld.copy(carFwd).multiplyScalar(0.85).addScaledVector(carUp, -1).normalize();
     _ray.origin.x=_lo.x; _ray.origin.y=_lo.y; _ray.origin.z=_lo.z;
     _ray.dir.x=_ld.x; _ray.dir.y=_ld.y; _ray.dir.z=_ld.z;
     let hit = null;
-    try { hit = world.castRay(_ray, 2.8, true, undefined, undefined, undefined, body); } catch(e){}
-    let target = 0, endD = 2.8;
+    try { hit = world.castRay(_ray, 3.2, true, undefined, undefined, undefined, body); } catch(e){}
+    let groundAhead = NaN, endD = 3.2;
     if (hit && isF(hit.toi) && hit.toi >= 0){
       endD = Math.max(hit.toi, 0.05);
-      const vert = endD*0.762;
-      const delta = vert - w.distVSm;
-      target = sClamp((0.6 - delta)*0.9, -0.12, 0.16, 0);
+      groundAhead = _lo.y + _ld.y*endD;   // ponto de hit = solo estimado
     }
-    w.macFeed += (target - w.macFeed)*sClamp(12*dt, 0, 1, 0);
-    if (!isF(w.macFeed)) w.macFeed = 0;
     lookDbg[i].d = endD;
+    lookDbg[i].hit = !!(hit && isF(hit.toi));
+    // feed: só terreno desigual à frente gera feed; piso uniforme = 0
+    let target = 0;
+    if (isF(groundNow) && isF(groundAhead)){
+      target = sClamp((groundAhead - groundNow)*0.9, -0.12, 0.16, 0);
+    }
+    w.macFeed += (target - w.macFeed)*sClamp(10*dt, 0, 1, 0);
+    if (!isF(w.macFeed)) w.macFeed = 0;
   }
 }
-// X3F — usa os nós do editor (sensor=sente, câmera=vê) ou os 6 fixos
-const sensDbg = Array.from({length:6}, ()=>({ d:3.0, hit:false }));
-let x3fAcc = 0;
+
+let x3fFeedSm = 0;
 function sampleX3F(){
-  let gNow = 0, gn = 0;
-  for (const w of wheels) for (const d of w.rayDbg)
-    if (d.hit && isF(d.d)){ gNow += d.d; gn++; }
-  gNow = gn ? gNow/gn : 0.70;
+  let gSum = 0, gN = 0;
+  for (const w of wheels){
+    if (!w.hits) continue;
+    let dS = 0;
+    for (const d of w.rayDbg) if (d.hit) dS += d.d;
+    const dMean = dS / w.hits;
+    if (!isF(dMean)) continue;
+    _hp.copy(w.hardLocal).applyQuaternion(carQ).add(carPos);
+    const g = _hp.y - dMean;
+    if (isF(g)){ gSum += g; gN++; }
+  }
+  const groundNow = gN ? gSum/gN : NaN;
   const list = x3fActiveNodes();
-  let sum = 0, cnt = 0;
+  let nSum = 0, nCnt = 0;
   for (const n of list){
     if (!n.dbg) n.dbg = { d:3.0, hit:false };
     _o.set(n.p[0], n.p[1], n.p[2]).applyQuaternion(carQ).add(carPos);
     _ray.origin.x=_o.x; _ray.origin.y=_o.y; _ray.origin.z=_o.z;
+    let hit = null;
     if (n.t === 'cam'){
-      // câmera "vê": raio inclinado para frente+baixo (previsão)
       _ld.copy(carFwd).multiplyScalar(0.85).addScaledVector(carUp, -1).normalize();
       _ray.dir.x=_ld.x; _ray.dir.y=_ld.y; _ray.dir.z=_ld.z;
-      let hit = null;
-      try { hit = world.castRay(_ray, 3.0, true, undefined, undefined, undefined, body); } catch(e){}
-      const d = (hit && isF(hit.toi) && hit.toi >= 0) ? Math.max(hit.toi, 0.05) : 3.0;
-      n.dbg.d = d; n.dbg.hit = !!(hit && isF(hit.toi));
-      sum += d*0.762;   // converte para equivalente vertical
-      cnt++;
+      try { hit = world.castRay(_ray, 3.2, true, undefined, undefined, undefined, body); } catch(e){}
+      if (hit && isF(hit.toi) && hit.toi >= 0){
+        n.dbg.d = Math.max(hit.toi, 0.05); n.dbg.hit = true;
+        const g = _o.y + _ld.y*n.dbg.d;
+        if (isF(g)){ nSum += g; nCnt++; }
+      } else { n.dbg.hit = false; n.dbg.d = 3.2; }
     } else {
-      // sensor "sente": raio para baixo
       _ray.dir.x=-carUp.x; _ray.dir.y=-carUp.y; _ray.dir.z=-carUp.z;
-      let hit = null;
-      try { hit = world.castRay(_ray, 3.0, true, undefined, undefined, undefined, body); } catch(e){}
-      const d = (hit && isF(hit.toi) && hit.toi >= 0) ? Math.max(hit.toi, 0.02) : 3.0;
-      n.dbg.d = d; n.dbg.hit = !!(hit && isF(hit.toi));
-      sum += d; cnt++;
+      try { hit = world.castRay(_ray, 3.2, true, undefined, undefined, undefined, body); } catch(e){}
+      if (hit && isF(hit.toi) && hit.toi >= 0){
+        n.dbg.d = Math.max(hit.toi, 0.02); n.dbg.hit = true;
+        const g = _o.y - carUp.y*n.dbg.d;
+        if (isF(g)){ nSum += g; nCnt++; }
+      } else { n.dbg.hit = false; n.dbg.d = 3.2; }
     }
   }
-  const mean = cnt ? sum/cnt : gNow;
-  const feed = sClamp((mean - gNow)*0.55, -0.12, 0.16, 0);
-  for (const w of wheels) w.x3fFeed = feed;
+  let target = 0;
+  if (nCnt >= 2 && isF(groundNow)){
+    const nMean = nSum/nCnt;
+    target = sClamp((nMean - groundNow)*0.55, -0.12, 0.16, 0);
+  }
+  x3fFeedSm += (target - x3fFeedSm)*0.30;
+  if (!isF(x3fFeedSm)) x3fFeedSm = 0;
+  for (const w of wheels) w.x3fFeed = x3fFeedSm;
 }
 
+let x3fAcc = 0;
 let totalHits = 0;
 function physicsStep(dt){
   if (!bodySane()){ hardResetCar(); return; }
@@ -3173,7 +2778,6 @@ function physicsStep(dt){
   steerState += clamp(steerIn*maxSteer - steerState, -4.6*dt, 4.6*dt);
   for (const w of wheels) w.steer = w.front ? steerState : 0;
 
-  // SHIFT = pulo (borda + cooldown, ≥2 rodas no chão)
   jumpCd -= dt;
   const sh = keys.has('ShiftLeft') || keys.has('ShiftRight');
   if (sh && !shiftPrev && jumpCd <= 0){
@@ -3207,7 +2811,7 @@ function physicsStep(dt){
     let n = 0;
     while (x3fAcc >= per && n < 12){ sampleX3F(); x3fAcc -= per; n++; }
     if (n >= 12) x3fAcc = 0;
-  } else x3fAcc = 0;
+  } else { x3fAcc = 0; x3fFeedSm = 0; }
 
   for (const w of wheels) suspension(w, dt);
 
@@ -3294,7 +2898,6 @@ function updateVisuals(dt){
     ptGeo.setDrawRange(0, qi/3);
     ptGeo.attributes.position.needsUpdate = true;
   }
-  // linhas dos nós X3F (sensor ciano = down · câmera âmbar = diagonal)
   xnLines.visible = raysVisible && suspType==='x3f';
   if (xnLines.visible){
     const list = x3fActiveNodes();
@@ -3423,7 +3026,6 @@ function updateHUD(dt){
     }
     if (menuOpen){
       updateMenuStats(); updateMemUI();
-      document.getElementById('sb-stats').innerHTML = sbStatsLine();
       mpTick++;
       if (mpTick >= 4){
         mpTick = 0;
@@ -3435,56 +3037,103 @@ function updateHUD(dt){
   }
 }
 
-/* ---- boot final ---- */
+/* ---- BOOT FINAL — estágios com try/catch + fallback ---- */
 bootMsg.textContent = 'montando carro…';
-loadCar();
-rebuildSuspensionVisuals();
-setRayCount(cfg.rayCount);
-if (cfg.proc.on){
-  bootMsg.textContent = 'gerando terreno procedural…';
-  applyProcWorld(cfg.proc.seed, true);
+try {
+  loadCar();
+  bootStages.push('OK  carro');
+} catch(err){
+  try {
+    carParts = defaultParts();
+    for (const p of carParts) createPartMesh(p);
+    rebuildCarPhysics();
+    bootStages.push('FAL peças salvas → carro padrão');
+  } catch(e2){}
 }
-if (worldMode !== 'proc') setWorldMode('flat');
-bootMsg.textContent = 'restaurando memória salva…';
-loadState();
-raysVisible = !!cfg.rays;
-rayLines.visible = rayPoints.visible = raysVisible;
-document.getElementById('chip-rays').classList.toggle('on', raysVisible);
-document.getElementById('chip-lights').classList.toggle('on', lightsOn);
-bindMenuUI(); bindEditorUI();
-applyPreset(presetName, true);
-updateSuspSub(); updateEditorUI();
+try {
+  rebuildSuspensionVisuals();
+  setRayCount(cfg.rayCount);
+  bootStages.push('OK  suspensão + ' + cfg.rayCount + ' rays');
+} catch(err){}
+try {
+  if (cfg.proc.on){
+    bootMsg.textContent = 'gerando terreno procedural…';
+    applyProcWorld(cfg.proc.seed, true);
+  }
+  if (worldMode !== 'proc') setWorldMode('flat');
+  bootStages.push('OK  mundo (' + worldMode + ')');
+} catch(err){
+  try { setWorldMode('flat'); } catch(e){}
+  bootStages.push('FAL terreno → mundo plano');
+}
+try {
+  loadState();
+  bootStages.push('OK  save');
+} catch(err){
+  try { setCarPose(0, spawnY(0,0), 0, 0,0,0,1); } catch(e){}
+  bootStages.push('FAL save → spawn');
+}
+try {
+  raysVisible = !!cfg.rays;
+  rayLines.visible = rayPoints.visible = raysVisible;
+  document.getElementById('chip-rays').classList.toggle('on', raysVisible);
+  document.getElementById('chip-lights').classList.toggle('on', lightsOn);
+  bindMenuUI(); bindEditorUI();
+  bootStages.push('OK  UI');
+} catch(err){}
+try {
+  applyPreset(presetName, true);
+  bootStages.push('OK  preset ' + presetName);
+} catch(err){}
+try {
+  updateSuspSub(); updateEditorUI();
+} catch(err){}
 
-let last = performance.now()/1000, acc = 0, saveT = 0, booted = false;
+let last = performance.now()/1000, acc = 0, saveT = 0, errStreak = 0;
 function frame(){
   requestAnimationFrame(frame);
-  const now = nowS();
-  const rawDt = now - last;
-  last = now;
-  const dt = isF(rawDt) ? Math.min(rawDt, 0.05) : 0;
-  if (isF(rawDt) && rawDt > 0) fpsEMA += (1/rawDt - fpsEMA)*0.08;
+  try {
+    const now = nowS();
+    const rawDt = now - last;
+    last = now;
+    const dt = isF(rawDt) ? Math.min(rawDt, 0.05) : 0;
+    if (isF(rawDt) && rawDt > 0) fpsEMA += (1/rawDt - fpsEMA)*0.08;
 
-  if (!paused() && dt > 0){
-    acc += dt; saveT += dt;
-    let steps = 0;
-    while (acc >= FIXED && steps < 4){ physicsStep(FIXED); acc -= FIXED; steps++; }
-    if (steps === 4) acc = 0;
-    if (saveT > 6){ saveT = 0; saveState(); }
-  } else acc = 0;
+    if (pendingEnv && booted){
+      pendingEnv = false;
+      try { envTex = buildEnv(); scene.environment = envTex; }
+      catch(e){ pendingEnv = false; }
+    }
 
-  netUpdate(dt);
-  syncBody();
-  softUpdate(dt);
-  updateVisuals(dt);
-  sbVisual();
-  updateCamera(dt);
-  cullPass(now);
-  renderer.render(scene, camera);
-  lastCalls = renderer.info.render.calls;
-  lastTris = renderer.info.render.triangles;
-  updateHUD(dt);
-  updateAudio(dt, throttle, linV.length());
-  if (!booted){ booted = true; bootEl.classList.add('done'); }
+    if (!paused() && dt > 0){
+      acc += dt; saveT += dt;
+      let steps = 0;
+      while (acc >= FIXED && steps < 4){ physicsStep(FIXED); acc -= FIXED; steps++; }
+      if (steps === 4) acc = 0;
+      if (saveT > 6){ saveT = 0; saveState(); }
+    } else acc = 0;
+
+    netUpdate(dt);
+    syncBody();
+    updateVisuals(dt);
+    updateCamera(dt);
+    cullPass(now);
+    renderer.render(scene, camera);
+    lastCalls = renderer.info.render.calls;
+    lastTris = renderer.info.render.triangles;
+    updateHUD(dt);
+    updateAudio(dt, throttle, linV.length());
+    errStreak = 0;
+    if (!booted){ booted = true; bootEl.classList.add('done'); }
+  } catch(err){
+    errStreak++;
+    if (errStreak === 1) console.error('[WB-6 frame]', err);
+    if (errStreak >= 90){
+      errStreak = 0;
+      bootFail('ERRO RECURRENTE NO RENDER — JOGO PAUSADO',
+        err && (err.stack || err.message || String(err)));
+    }
+  }
 }
 frame();
 
