@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WB-6 — Chassi Raycast · Fix Tunnelling + Rays</title>
+<title>WB-6 — Chassi Raycast · Multiplayer + Chat</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
@@ -73,6 +73,20 @@
     font-size:9px;letter-spacing:.12em;color:var(--dim);white-space:nowrap}
   #stats b{color:var(--ink);font-weight:600}
 
+  /* chat */
+  #chatlog{position:absolute;bottom:52px;left:50%;transform:translateX(-50%);
+    display:flex;flex-direction:column;align-items:center;gap:3px;max-width:70vw}
+  .chatline{background:var(--panel);border:1px solid var(--line);padding:4px 10px;
+    font-size:10.5px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    max-width:70vw}
+  .chatline b{color:var(--accent);font-weight:600}
+  .chatline.sys{color:var(--dim);font-size:9.5px;letter-spacing:.08em}
+  #chatbox{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);
+    display:none;z-index:20;pointer-events:auto}
+  #chatbox.open{display:block}
+  #chat-in{width:min(480px,80vw);background:var(--panel);border:1px solid var(--accent);
+    color:var(--ink);font-family:inherit;font-size:11.5px;padding:8px 12px;outline:none}
+
   .p-keys{bottom:18px;right:18px;font-size:10px;line-height:2;color:var(--dim)}
   .k{display:inline-block;min-width:16px;text-align:center;border:1px solid var(--line);
     padding:0 4px;margin-right:6px;color:var(--ink);font-size:9.5px}
@@ -82,7 +96,7 @@
   #menu{position:fixed;inset:0;z-index:50;display:none;align-items:center;justify-content:center;
     background:rgba(10,9,8,.55)}
   #menu.open{display:flex}
-  .m-panel{width:min(460px,94vw);max-height:92vh;overflow:auto;background:var(--panel);
+  .m-panel{width:min(470px,94vw);max-height:92vh;overflow:auto;background:var(--panel);
     border:1px solid var(--line);padding:16px 18px 14px;pointer-events:auto}
   .m-head{display:flex;justify-content:space-between;align-items:center;gap:10px;
     border-bottom:1px solid var(--line);padding-bottom:10px;margin-bottom:12px}
@@ -105,6 +119,7 @@
     border:1px solid var(--line);color:var(--ink);cursor:pointer;white-space:nowrap}
   .mbtn:hover{border-color:var(--accent);color:var(--accent)}
   .mbtn.warn:hover{border-color:var(--hot);color:var(--hot)}
+  .mbtn[disabled]{opacity:.35;pointer-events:none}
   .m-btnrow{display:flex;gap:8px;margin-top:8px}
   .sw{cursor:pointer;display:inline-flex}
   .sw input{display:none}
@@ -118,6 +133,8 @@
     font-family:inherit;font-size:10.5px;padding:3px 6px}
   .wide{width:100%}
   .dim{color:var(--dim)}
+  .servrow{display:flex;justify-content:space-between;align-items:center;gap:8px;
+    padding:4px 0;border-bottom:1px dashed var(--line);font-size:10px}
 
   #editor{position:fixed;inset:0;z-index:45;display:none;pointer-events:none}
   #editor.open{display:block}
@@ -152,7 +169,7 @@
 
 <div id="boot">
   <div class="boot-title">WB<b>—</b>6</div>
-  <div class="boot-sub">PROCEDURAL · LOW RIDER · 6 SUSPENSÕES</div>
+  <div class="boot-sub">MULTIPLAYER · CHAT · 6 SUSPENSÕES</div>
   <div class="boot-bar"></div>
   <div id="boot-msg">carregando módulos…</div>
 </div>
@@ -167,6 +184,7 @@
       <span class="chip on" id="chip-preset">POTATO</span>
       <span class="chip on" id="chip-lights">FARÓIS</span>
       <span class="chip on" id="chip-rays">DEBUG RAYS</span>
+      <span class="chip" id="chip-mp" style="display:none">MP</span>
     </div>
   </div>
   <div class="panel p-speed">
@@ -177,6 +195,8 @@
     <div class="tel-head">TELEMETRIA DE SUSPENSÃO</div>
     <div class="tel-grid" id="tel-grid"></div>
   </div>
+  <div id="chatlog"></div>
+  <div id="chatbox"><input id="chat-in" maxlength="120" placeholder="digite e pressione ENTER para enviar · ESC fecha" autocomplete="off" spellcheck="false"></div>
   <div id="stats">
     <b id="st-fps">60</b> FPS · <b id="st-draw">0</b> DRAWS · <b id="st-tri">0</b> TRIS ·
     CULL <b id="st-cull">0F/0O</b> · CACHE <b id="st-cache">0</b> · ODO <b id="st-odo">0 m</b>
@@ -184,6 +204,7 @@
   <div class="panel p-keys">
     <div class="row"><span><span class="k">W</span><span class="k">S</span><span class="k">A</span><span class="k">D</span></span><span>dirigir</span></div>
     <div class="row"><span><span class="k">ESPAÇO</span></span><span>freio de mão</span></div>
+    <div class="row"><span><span class="k">;</span></span><span>chat (bolha 5s)</span></div>
     <div class="row"><span><span class="k">T</span><span class="k">Y</span><span class="k">U</span><span class="k">I</span></span><span>low rider abaixa (F/H/J/K sobe)</span></div>
     <div class="row"><span><span class="k">L</span><span class="k">G</span><span class="k">R</span></span><span>faróis · rays · reset</span></div>
     <div class="row"><span><span class="k">P</span><span class="k">E</span></span><span>opções · editor de carro</span></div>
@@ -196,6 +217,37 @@
   <div class="m-panel">
     <div class="m-head"><b>OPÇÕES <span class="m-pause">· FÍSICA PAUSADA</span></b>
       <button class="mbtn" id="m-close">FECHAR [P]</button></div>
+
+    <div class="m-sec">
+      <div class="m-label">MULTIPLAYER — LOCAL ENTRE ABAS/JANELAS</div>
+      <div class="row-line"><span>seu nametag</span>
+        <input id="m-name" class="tin" maxlength="16" spellcheck="false"></div>
+
+      <div class="m-label" style="margin-top:10px">CRIAR SERVIDOR</div>
+      <div class="row-line"><span>código do servidor</span>
+        <span style="display:flex;gap:6px;align-items:center">
+          <input id="m-hostcode" class="tin" maxlength="16" spellcheck="false">
+          <button class="mbtn on" id="m-priv">PRIVADO</button>
+          <button class="mbtn" id="m-pub">PÚBLICO</button>
+        </span></div>
+      <div class="row-line"><span class="dim" id="m-privhint">privado = só entra pelo código</span>
+        <button class="mbtn" id="m-host">CRIAR SERVIDOR</button></div>
+
+      <div class="m-label" style="margin-top:10px">ENTRAR POR CÓDIGO</div>
+      <div class="row-line"><span>código</span>
+        <span style="display:flex;gap:6px">
+          <input id="m-joincode" class="tin" maxlength="16" spellcheck="false">
+          <button class="mbtn" id="m-join">ENTRAR</button>
+        </span></div>
+
+      <div class="m-label" style="margin-top:10px">SERVIDORES PÚBLICOS</div>
+      <div id="m-servs" class="m-note"></div>
+
+      <div class="row-line" style="margin-top:8px;border-top:1px dashed var(--line);padding-top:8px">
+        <span id="m-netstatus">desconectado</span>
+        <button class="mbtn warn" id="m-leave" disabled>SAIR</button></div>
+      <div class="m-note">ao criar/entrar, o <b>mapa multiplayer</b> substitui o mundo atual: piso verde com rampas (pequena, média, grande e larga) e dois setores de quebra-molas — em série e alternados por lado. o chat abre com <b>;</b> no jogo. funciona entre abas/janelas deste navegador no mesmo computador.</div>
+    </div>
 
     <div class="m-sec">
       <div class="m-label">PRESET DE GRÁFICOS</div>
@@ -236,10 +288,10 @@
     <div class="m-sec">
       <div class="m-label">FÍSICA — SUSPENSÃO</div>
       <div class="row-line"><span>raycasts por roda <b id="m-rays-n">6</b> <span class="dim">(1–32)</span></span>
-        <input type="range" id="m-rays" min="1" max="600" step="1" value="6"></div>
+        <input type="range" id="m-rays" min="1" max="32" step="1" value="6"></div>
       <div class="row-line"><span>oclusão por raycast <span class="dim">(desligue se algo sumir)</span></span>
         <label class="sw"><input type="checkbox" id="m-occ"><i></i></label></div>
-      <div class="m-note">CCD ativo no carro e caixotes (anti-atravessar) · bump-stop progressivo no fim do curso · spawn sempre validado contra a altura do terreno.</div>
+      <div class="m-note">CCD ativo no carro e caixotes · bump-stop progressivo · spawn validado contra o solo.</div>
     </div>
 
     <div class="m-sec">
@@ -367,6 +419,14 @@ function numArr(a, n){
 }
 function finVec(v){ return isF(v.x) && isF(v.y) && isF(v.z); }
 const sstep = (a, b, x) => { const t = sClamp((x - a) / (b - a), 0, 1, 0); return t * t * (3 - 2 * t); };
+const nowS = () => performance.now()/1000;
+function sanitizeName(v){
+  const s = String(v == null ? '' : v).replace(/[^\w \-.áéíóúãõâêôçüÁÉÍÓÚÃÕÂÊÔÇÜ]/g,'').trim();
+  return s.slice(0,16) || 'PILOTO';
+}
+function sanitizeCode(v){
+  return String(v == null ? '' : v).replace(/[^a-zA-Z0-9\-_]/g,'').slice(0,16);
+}
 
 const bootEl = document.getElementById('boot');
 const bootMsg = document.getElementById('boot-msg');
@@ -391,11 +451,12 @@ const LS_CFG = 'wb6.cfg.v2', LS_STATE = 'wb6.state.v2', LS_CAR = 'wb6.car.v2';
 const PRESET_NAMES = ['potato','baixo','medio','alto'];
 const SUSP_NAMES = ['double','single','mac','leaf','x3f','lowrider'];
 
-let cfg = { preset:'potato', lights:true, rays:true, rayCount:6, occ:true, snd:true, vol:70,
-            up:{ on:true, scale:0.5, pix:false }, proc:{ on:false, seed:'x3f-6' } };
+let cfg = { name:'PILOTO', preset:'potato', lights:true, rays:true, rayCount:6, occ:true,
+            snd:true, vol:70, up:{ on:true, scale:0.5, pix:false }, proc:{ on:false, seed:'x3f-6' } };
 try {
   const s = JSON.parse(localStorage.getItem(LS_CFG) || 'null');
   if (s && typeof s === 'object'){
+    cfg.name = sanitizeName(s.name);
     if (PRESET_NAMES.includes(s.preset)) cfg.preset = s.preset;
     cfg.lights = !!s.lights; cfg.rays = !!s.rays;
     cfg.rayCount = sClamp(Math.round(numSafe(s.rayCount, 6)), 1, 32, 6);
@@ -529,16 +590,23 @@ function cullPass(now){
 }
 
 /* ============================================================
-   [4] MUNDO PLANO
+   [4] GERÊNCIA DE MUNDOS — flat | proc | mp
+   *** FIX DO BUG "ATRAVESSA O CHÃO": as chamadas antigas de
+   toggleFlatCol não passavam o makeDesc, e o createCollider
+   do Rapier cai no default da API — uma BOLA de raio 0.5
+   como "chão". Agora o desc é obrigatório e guardado. ***
 ============================================================ */
 const FIXED = 1/60;
 const world = new RAPIER.World({ x:0, y:-19, z:0 });
 world.timestep = FIXED;
 
-const flat = { floorMesh:null, floor:{ body:null, col:null }, blocks:[] };
 function toggleFlatCol(ref, on, makeDesc){
   if (on){
     if (!ref.col){
+      if (typeof makeDesc !== 'function'){
+        console.warn('toggleFlatCol: makeDesc ausente — collider NÃO criado (defesa anti-regressão)');
+        return;
+      }
       try {
         ref.col = ref.body ? world.createCollider(makeDesc(), ref.body) : world.createCollider(makeDesc());
         occSet.add(ref.col);
@@ -549,6 +617,11 @@ function toggleFlatCol(ref, on, makeDesc){
     occSet.delete(ref.col); ref.col = null;
   }
 }
+
+let worldMode = 'flat', prevMode = 'flat';
+
+/* ---- 4a. MUNDO PLANO ORIGINAL ---- */
+const flat = { floorMesh:null, floor:{ col:null }, blocks:[] };
 function setFlatActive(on){
   if (flat.floorMesh) flat.floorMesh.visible = on;
   toggleFlatCol(flat.floor, on,
@@ -580,10 +653,12 @@ let floorTex;
   floor.rotation.x = -Math.PI/2;
   scene.add(floor);
   flat.floorMesh = floor;
-  toggleFlatCol(flat.floor, true);
+  // *** CORREÇÃO: desc obrigatório aqui (era a causa do bug) ***
+  toggleFlatCol(flat.floor, true,
+    ()=>RAPIER.ColliderDesc.cuboid(120,0.5,120).setTranslation(0,-0.5,0).setFriction(1.0));
 }
 const blockMat = new THREE.MeshStandardMaterial({ color:0xb5afa0, roughness:0.85 });
-function addBlock(x,y,z,hx,hy,hz,ax=0){
+function addFlatBlock(x,y,z,hx,hy,hz,ax=0){
   const bd = RAPIER.RigidBodyDesc.fixed().setTranslation(x,y,z);
   if (ax) bd.setRotation({x:Math.sin(ax/2),y:0,z:0,w:Math.cos(ax/2)});
   const b = world.createRigidBody(bd);
@@ -594,13 +669,15 @@ function addBlock(x,y,z,hx,hy,hz,ax=0){
   const entry = regStatic(m, true);
   const blk = { body:b, mesh:m, params:[x,y,z,hx,hy,hz,ax], col:null, entry };
   flat.blocks.push(blk);
-  toggleFlatCol(blk, true);
+  // *** CORREÇÃO: desc obrigatório aqui também ***
+  toggleFlatCol(blk, true,
+    ()=>RAPIER.ColliderDesc.cuboid(hx,hy,hz).setFriction(1.0));
 }
-addBlock(0,0.44,-9.5, 1.7,0.09,2.7, 0.21);
-addBlock(0,0.44,15.5, 1.7,0.09,2.7,-0.21);
-for (let i=0;i<8;i++) addBlock(0,0.05,3.2+i*1.35, 1.5,0.05,0.30);
-addBlock(7.5,0.16,-3, 1.3,0.16,1.3);
-addBlock(10.8,0.275,-3, 1.3,0.275,1.3);
+addFlatBlock(0,0.44,-9.5, 1.7,0.09,2.7, 0.21);
+addFlatBlock(0,0.44,15.5, 1.7,0.09,2.7,-0.21);
+for (let i=0;i<8;i++) addFlatBlock(0,0.05,3.2+i*1.35, 1.5,0.05,0.30);
+addFlatBlock(7.5,0.16,-3, 1.3,0.16,1.3);
+addFlatBlock(10.8,0.275,-3, 1.3,0.275,1.3);
 
 const crateMat = new THREE.MeshStandardMaterial({ color:0xa98a5f, roughness:0.8 });
 const crateSpawns = [[2.6,0.26,2.2,0.52],[3.3,0.26,2.9,0.52],[2.9,0.80,2.5,0.52]];
@@ -608,7 +685,7 @@ const crates = [];
 for (const [x,y,z,s] of crateSpawns){
   const cb = world.createRigidBody(RAPIER.RigidBodyDesc.dynamic()
     .setTranslation(x,y,z).setAngularDamping(0.3).setLinearDamping(0.1)
-    .setCcdEnabled(true));                                    // CCD: caixote não atravessa
+    .setCcdEnabled(true));
   world.createCollider(RAPIER.ColliderDesc.cuboid(s/2,s/2,s/2).setMass(7).setFriction(0.7), cb);
   const mesh = new THREE.Mesh(new THREE.BoxGeometry(s,s,s), crateMat);
   scene.add(mesh);
@@ -616,9 +693,7 @@ for (const [x,y,z,s] of crateSpawns){
   regDyn(mesh, new THREE.Vector3(0,0,0), s*0.95);
 }
 
-/* ============================================================
-   [4b] MUNDO PROCEDURAL
-============================================================ */
+/* ---- 4b. MUNDO PROCEDURAL ---- */
 function xmur3(str){
   let h = 1779033703 ^ str.length;
   for (let i=0;i<str.length;i++){
@@ -679,14 +754,14 @@ function makeHeightFn(seedStr){
   };
 }
 const terrainMat = new THREE.MeshStandardMaterial({ vertexColors:true, roughness:0.95, metalness:0 });
-let terrain = null, procOn = false, procSeedStr = '', procStats = '';
+let terrain = null, procSeedStr = '', procStats = '';
 function removeTerrain(){
   if (!terrain) return;
   scene.remove(terrain.mesh);
   terrain.mesh.geometry.dispose();
-  try { world.removeCollider(terrain.col, false); } catch(e){}
+  try { if (terrain.col) world.removeCollider(terrain.col, false); } catch(e){}
   try { world.removeRigidBody(terrain.body); } catch(e){}
-  occSet.delete(terrain.col);
+  if (terrain.col) occSet.delete(terrain.col);
   terrain = null;
 }
 function genTerrain(seed){
@@ -710,23 +785,105 @@ function genTerrain(seed){
   const mesh = new THREE.Mesh(geo, terrainMat);
   mesh.receiveShadow = true;
   scene.add(mesh);
-  const verts = new Float32Array(pos.array);
-  const idx = new Uint32Array(geo.index.array);
+  const vertsA = new Float32Array(pos.array);
+  const idxA = new Uint32Array(geo.index.array);
   const tBody = world.createRigidBody(RAPIER.RigidBodyDesc.fixed());
   const tCol = world.createCollider(
-    RAPIER.ColliderDesc.trimesh(verts, idx).setFriction(1.0), tBody);
+    RAPIER.ColliderDesc.trimesh(vertsA, idxA).setFriction(1.0), tBody);
   occSet.add(tCol);
-  return { mesh, body:tBody, col:tCol, hFn, verts:pos.count, tris:idx.length/3 };
+  return { mesh, body:tBody, col:tCol, hFn, vertsA, idxA, verts:pos.count, tris:idxA.length/3 };
 }
-// altura do solo sob (x,z) — usado para validar spawn/restauração
+function setTerrainActive(on){
+  if (!terrain) return;
+  terrain.mesh.visible = on;
+  if (!on){
+    if (terrain.col){ try { world.removeCollider(terrain.col, false); } catch(e){} occSet.delete(terrain.col); terrain.col = null; }
+  } else if (!terrain.col){
+    try {
+      terrain.col = world.createCollider(
+        RAPIER.ColliderDesc.trimesh(terrain.vertsA, terrain.idxA).setFriction(1.0), terrain.body);
+      occSet.add(terrain.col);
+    } catch(e){}
+  }
+}
 function terrainHeight(x, z){
-  if (procOn && terrain && terrain.hFn){
+  if (worldMode === 'proc' && terrain && terrain.hFn){
     const h = terrain.hFn(x, z);
     if (isF(h)) return h;
   }
   return 0;
 }
 const spawnY = (x = 0, z = 0) => terrainHeight(x, z) + 1.0;
+
+/* ---- 4c. MAPA MULTIPLAYER — piso verde, rampas e quebra-molas ---- */
+const mpw = { built:false, floorMesh:null, floor:{ col:null }, blocks:[] };
+const mpGreenTex = ()=>{
+  const cv = document.createElement('canvas'); cv.width = cv.height = 256;
+  const g = cv.getContext('2d');
+  g.fillStyle = '#64944a'; g.fillRect(0,0,256,256);
+  g.strokeStyle = '#5c8a43'; g.lineWidth = 2; g.strokeRect(1,1,254,254);
+  g.strokeStyle = '#5e8c45'; g.lineWidth = 1;
+  g.beginPath(); g.moveTo(128,0); g.lineTo(128,256); g.moveTo(0,128); g.lineTo(256,128); g.stroke();
+  const tex = new THREE.CanvasTexture(cv);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(48,48);
+  return tex;
+};
+const mpBumpMat = new THREE.MeshStandardMaterial({ color:0x3c3833, roughness:0.9 });
+function buildMpWorld(){
+  if (mpw.built) return;
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(240,240),
+    new THREE.MeshStandardMaterial({ map:mpGreenTex(), roughness:0.95 }));
+  floor.rotation.x = -Math.PI/2;
+  floor.visible = false;
+  scene.add(floor);
+  mpw.floorMesh = floor;
+  const mpBlock = (x,y,z,hx,hy,hz,ax,mat)=>{
+    const bd = RAPIER.RigidBodyDesc.fixed().setTranslation(x,y,z);
+    if (ax) bd.setRotation({x:Math.sin(ax/2),y:0,z:0,w:Math.cos(ax/2)});
+    const b = world.createRigidBody(bd);
+    const m = new THREE.Mesh(new THREE.BoxGeometry(hx*2,hy*2,hz*2), mat || blockMat);
+    m.position.set(x,y,z);
+    if (ax) m.quaternion.setFromAxisAngle(new THREE.Vector3(1,0,0), ax);
+    m.visible = false;
+    scene.add(m);
+    const entry = regStatic(m, true);
+    entry.baseVis = ()=>false;
+    const blk = { body:b, mesh:m, params:[hx,hy,hz], col:null, entry };
+    mpw.blocks.push(blk);
+    return blk;
+  };
+  // RAMPAS — pequena, média, grande e larga (lado oeste)
+  mpBlock(-14, 0.11, -12, 1.3, 0.11, 2.4, 0.14);   // pequena
+  mpBlock(-14, 0.18, -5,  1.5, 0.18, 2.6, 0.26);   // média
+  mpBlock(-14, 0.26,  2,  1.8, 0.26, 3.0, 0.40);   // grande
+  mpBlock(-14, 0.17, 10,  3.0, 0.17, 2.6, 0.24);   // larga
+  // QUEBRA-MOLAS EM SÉRIE — 10 seguidos, todas as rodas de uma vez
+  for (let i=0;i<10;i++) mpBlock(8 + i*3, 0.05, -16, 1.4, 0.05, 0.30, 0, mpBumpMat);
+  // QUEBRA-MOLAS ALTERNADOS — zigue: testa esquerda/direita separadamente
+  for (let i=0;i<12;i++) mpBlock(8 + i*3, 0.05, (i%2 ? 8-2.1 : 8+2.1), 1.3, 0.05, 0.34, 0, mpBumpMat);
+  mpw.built = true;
+}
+function setMpActive(on){
+  buildMpWorld();
+  mpw.floorMesh.visible = on;
+  toggleFlatCol(mpw.floor, on,
+    ()=>RAPIER.ColliderDesc.cuboid(120,0.5,120).setTranslation(0,-0.5,0).setFriction(1.0));
+  for (const b of mpw.blocks){
+    b.mesh.visible = on;
+    if (b.entry) b.entry.baseVis = on ? null : ()=>false;
+    toggleFlatCol(b, on,
+      ()=>RAPIER.ColliderDesc.cuboid(b.params[0],b.params[1],b.params[2]).setFriction(1.0));
+    if (on && b.entry){ b.entry.occ = false; b.entry.votes = 0; }
+  }
+}
+function setWorldMode(mode){
+  worldMode = mode;
+  setFlatActive(mode === 'flat');
+  setTerrainActive(mode === 'proc');
+  setMpActive(mode === 'mp');
+}
 function applyProcWorld(seed, fromBoot = false){
   const t0 = performance.now();
   let t = null;
@@ -734,29 +891,30 @@ function applyProcWorld(seed, fromBoot = false){
   if (t){
     removeTerrain();
     terrain = t;
-    procOn = true; procSeedStr = seed;
-    setFlatActive(false);
+    procSeedStr = seed;
+    setWorldMode('proc');
     cfg.proc = { on:true, seed }; saveCfg();
     procStats = `seed <b>"${seed}"</b> · ${terrain.verts} vértices · ${terrain.tris} tris · gerado em ${((performance.now()-t0)|0)} ms · área plana r=26 m · muralha na borda`;
     if (!fromBoot){
-      setCarPose(0, spawnY(0,0), 0, 0, 0, 0, 1);
+      setCarPose(0, spawnY(0,0), 0, 0,0,0,1);
       camPos.set(0, 3.4, -9);
       saveState();
       toast('MUNDO PROCEDURAL GERADO — SEED "' + seed.toUpperCase() + '"');
     }
     return true;
   }
-  toast('FALHA AO GERAR TERRENO — MUNDO PLANO MANTIDO');
-  disableProc(true);
+  if (!fromBoot) toast('FALHA AO GERAR TERRENO — MUNDO ANTERIOR MANTIDO');
+  cfg.proc = { on:false, seed }; saveCfg();
+  if (worldMode === 'proc') setWorldMode('flat');
   return false;
 }
 function disableProc(silent = false){
   removeTerrain();
-  procOn = false;
-  setFlatActive(true);
+  procSeedStr = '';
   cfg.proc = Object.assign({}, cfg.proc, { on:false }); saveCfg();
+  if (worldMode === 'proc') setWorldMode('flat');
   if (!silent){
-    setCarPose(0, spawnY(0,0), 0, 0, 0, 0, 1);
+    setCarPose(0, spawnY(0,0), 0, 0,0,0,1);
     camPos.set(0, 3.4, -9);
     saveState();
     toast('MUNDO PLANO RESTAURADO');
@@ -764,7 +922,7 @@ function disableProc(silent = false){
 }
 
 /* ============================================================
-   [5] CHASSI — COM CCD (anti-atravessar em alta velocidade)
+   [5] CHASSI — CCD
 ============================================================ */
 const body = world.createRigidBody(RAPIER.RigidBodyDesc.dynamic()
   .setTranslation(0,1.0,0).setLinearDamping(0.04).setAngularDamping(0.5)
@@ -886,8 +1044,6 @@ function rebuildCarPhysics(){
   try {
     mRaw = typeof body.mass === 'function' ? body.mass() : (isF(body.mass) ? body.mass : NaN);
   } catch(e){}
-  // massF escala TODAS as forças proporcionalmente → dinâmica normalizada:
-  // qualquer massa (até ~48 t de peças editadas) é segurável pela suspensão
   massF = (isF(mRaw) && mRaw > 1) ? sClamp(mRaw/760, 0.35, 64, 1) : 1;
 }
 function createPartMesh(p){
@@ -1070,7 +1226,6 @@ const wheels = [
   buildWheel(+0.95,-1.15,false,+1), buildWheel(-0.95,-1.15,false,-1)
 ];
 for (const w of wheels) regDyn(w.frame, new THREE.Vector3(w.x,-0.35,w.z), 1.2);
-// locais fixos dos 6 sensores X3F (2 do carro + 4 das rodas) — re-projeção visual
 const SENS_LOCAL = [[0.45,-0.15,1.85],[-0.45,-0.15,1.85]];
 for (const w of wheels) SENS_LOCAL.push([w.x,-0.10,w.z+0.55]);
 
@@ -1125,8 +1280,7 @@ function rebuildSuspensionVisuals(){
 }
 
 /* ============================================================
-   [8] DEBUG — buffers dimensionados para 4 RODAS × 32 rays
-   (bug anterior: buffer só cabia UMA roda)
+   [8] DEBUG — buffers 4 rodas × 32 rays
 ============================================================ */
 const MAXR = 32;
 const rayPos = new Float32Array(MAXR*4*2*3), rayCol = new Float32Array(MAXR*4*2*3);
@@ -1173,7 +1327,6 @@ function setRayCount(n){
     }
   }
   RAY_OFFSETS = offs;
-  // cada ray guarda só a DISTÂNCIA — a pose é re-projetada no draw
   for (const w of wheels)
     w.rayDbg = offs.map(()=>({ d:0, hit:false }));
 }
@@ -1254,7 +1407,273 @@ function updateAudio(dt, throttle, spd){
 }
 
 /* ============================================================
-   [10] TOAST / ENTRADA / MENU / EDITOR
+   [10] MULTIPLAYER — BroadcastChannel (abas do mesmo navegador)
+   + CHAT (;) com bolha 3D + lista de servidores públicos
+============================================================ */
+const NET_ID = Math.random().toString(36).slice(2,10);
+const NET_DISC = 'wb6-disc';
+let net = null;
+const publicServers = new Map();
+let discCh = null;
+try { discCh = new BroadcastChannel(NET_DISC); } catch(e){ discCh = null; }
+if (discCh){
+  discCh.onmessage = e=>{
+    const m = e.data;
+    if (!m || typeof m !== 'object') return;
+    if (m.t === 'ann' && m.code){
+      publicServers.set(sanitizeCode(m.code),
+        { players: sClamp(Math.round(+m.players||1),1,64,1), seen: nowS() });
+    } else if (m.t === 'query' && net && net.role === 'host' && !net.priv){
+      try { discCh.postMessage({ t:'ann', code:net.code, players:net.peers.size+1 }); } catch(e2){}
+    }
+  };
+}
+function netSend(msg){
+  if (net && net.bc){ try { net.bc.postMessage(msg); } catch(e){} }
+}
+function stMsg(){
+  const t = body.translation(), q = body.rotation();
+  if (![t.x,t.y,t.z,q.x,q.y,q.z,q.w].every(isF)) return { t:'noop' };
+  return { t:'st', id:NET_ID, n:cfg.name,
+    p:[+t.x.toFixed(2),+t.y.toFixed(2),+t.z.toFixed(2)],
+    q:[+q.x.toFixed(3),+q.y.toFixed(3),+q.z.toFixed(3),+q.w.toFixed(3)] };
+}
+// ---- carro remoto (low-end: 2 meshes + 4 rodas + nametag) ----
+const remoteMat = new THREE.MeshStandardMaterial({ color:0x4a7f9e, roughness:0.5 });
+const remoteBoxGeo = new THREE.BoxGeometry(1.6,0.42,3.4);
+const remoteCapGeo = new THREE.CapsuleGeometry(0.5,0.16,6,10);
+function makeTagSprite(name){
+  const cv = document.createElement('canvas'); cv.width = 256; cv.height = 64;
+  const g = cv.getContext('2d');
+  g.font = '600 26px "IBM Plex Mono", monospace';
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  const w = Math.min(g.measureText(name).width + 22, 256);
+  g.fillStyle = 'rgba(20,19,16,0.88)';
+  g.fillRect(128-w/2, 8, w, 48);
+  g.strokeStyle = '#38342c'; g.lineWidth = 2; g.strokeRect(128-w/2, 8, w, 48);
+  g.fillStyle = '#e5a13c';
+  g.fillText(name, 128, 33);
+  const tex = new THREE.CanvasTexture(cv);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map:tex, transparent:true }));
+  spr.scale.set(1.6, 0.4, 1);
+  return spr;
+}
+function makeRemote(name){
+  const g = new THREE.Group();
+  const m1 = new THREE.Mesh(remoteBoxGeo, remoteMat); m1.position.y = 0.13; g.add(m1);
+  const m2 = new THREE.Mesh(remoteCapGeo, glassCheap); m2.position.y = 0.66; g.add(m2);
+  for (const [wx,wz] of [[0.95,1.15],[-0.95,1.15],[0.95,-1.15],[-0.95,-1.15]]){
+    const wm = new THREE.Mesh(tireGeo, tireMat);
+    wm.rotation.z = Math.PI/2; wm.position.set(wx,-0.45,wz); g.add(wm);
+  }
+  const tag = makeTagSprite(name); tag.position.y = 1.45; g.add(tag);
+  scene.add(g);
+  regDyn(g, v=>v.copy(g.position), 2.4);
+  return { g, tag };
+}
+function removeRemote(p){
+  if (p.mesh){ scene.remove(p.mesh.g); p.mesh = null; }
+}
+// ---- mensagens ----
+function onNetMsg(e){
+  if (!net) return;
+  const m = e.data;
+  if (!m || typeof m !== 'object' || m.id === NET_ID) return;
+  if (m.t === 'join'){
+    if (net.peers.size >= 16) return;
+    let p = net.peers.get(m.id);
+    const nm = sanitizeName(m.n);
+    if (!p){
+      p = { name:nm, mesh:null, tx:0, ty:2, tz:0, tq:new THREE.Quaternion(), tqv:false, seen:0, lastChat:0 };
+      net.peers.set(m.id, p);
+      addChatMsg('SISTEMA', nm + ' entrou no servidor', true);
+    }
+    p.name = nm; p.seen = nowS();
+    if (!p.mesh) p.mesh = makeRemote(nm);
+    netSend(stMsg());                       // apresenta-se ao recém-chegado
+  } else if (m.t === 'leave'){
+    const p = net.peers.get(m.id);
+    if (p){ addChatMsg('SISTEMA', p.name + ' saiu', true); removeRemote(p); net.peers.delete(m.id); }
+  } else if (m.t === 'st'){
+    let p = net.peers.get(m.id);
+    const P = numArr(m.p, 3), Q = numArr(m.q, 4);
+    if (!P || !Q) return;
+    if (!p){
+      p = { name:sanitizeName(m.n), mesh:null, tx:0, ty:2, tz:0,
+            tq:new THREE.Quaternion(), tqv:false, seen:0 };
+      net.peers.set(m.id, p);
+      p.mesh = makeRemote(p.name);
+    }
+    p.name = sanitizeName(m.n) || p.name;
+    p.tx = P[0]; p.ty = P[1]; p.tz = P[2];
+    const ql = Math.hypot(Q[0],Q[1],Q[2],Q[3]);
+    if (ql > 0.2 && ql < 5){ p.tq.set(Q[0],Q[1],Q[2],Q[3]).normalize(); p.tqv = true; }
+    p.seen = nowS();
+  } else if (m.t === 'chat'){
+    const name = sanitizeName(m.n);
+    const text = String(m.x == null ? '' : m.x).slice(0,120);
+    if (!text) return;
+    addChatMsg(name, text);
+    spawnBubble(m.id, name, text);
+  }
+}
+function netHost(code, priv){
+  netLeave(true);
+  try {
+    net = { role:'host', code, priv, bc:new BroadcastChannel('wb6:'+code),
+            peers:new Map(), announceT:0, stateT:0 };
+  } catch(e){ net = null; toast('BROADCASTCHANNEL INDISPONÍVEL NESTE NAVEGADOR'); return; }
+  net.bc.onmessage = onNetMsg;
+  addChatMsg('SISTEMA', 'servidor "' + code + '" criado (' + (priv?'privado':'público') + ') — aguardando pilotos', true);
+  enterMpWorld();
+  toast('SERVIDOR "' + code.toUpperCase() + '" CRIADO — MAPA MP CARREGADO');
+  updateMenuUI();
+}
+function netJoin(code){
+  netLeave(true);
+  try {
+    net = { role:'client', code, priv:true, bc:new BroadcastChannel('wb6:'+code),
+            peers:new Map(), announceT:0, stateT:0 };
+  } catch(e){ net = null; toast('BROADCASTCHANNEL INDISPONÍVEL NESTE NAVEGADOR'); return; }
+  net.bc.onmessage = onNetMsg;
+  netSend({ t:'join', id:NET_ID, n:cfg.name });
+  addChatMsg('SISTEMA', 'você entrou no servidor "' + code + '"', true);
+  enterMpWorld();
+  toast('ENTRANDO NO SERVIDOR "' + code.toUpperCase() + '"');
+  updateMenuUI();
+}
+function netLeave(silent){
+  if (!net) return;
+  try { net.bc.postMessage({ t:'leave', id:NET_ID }); } catch(e){}
+  try { net.bc.close(); } catch(e){}
+  for (const p of net.peers.values()) removeRemote(p);
+  net = null;
+  if (!silent){
+    addChatMsg('SISTEMA', 'você saiu do servidor', true);
+    leaveMpWorld();
+    updateMenuUI();
+  }
+}
+function enterMpWorld(){
+  prevMode = worldMode;
+  setWorldMode('mp');
+  setCarPose(0, 1.0, -24, 0,0,0,1);   // spawn do mapa MP
+  camPos.set(0, 3.4, -33);
+}
+function leaveMpWorld(){
+  const back = (prevMode === 'proc' && terrain) ? 'proc' : 'flat';
+  setWorldMode(back);
+  setCarPose(0, spawnY(0,0), 0, 0,0,0,1);
+  camPos.set(0, 3.4, -9);
+  saveState();
+}
+function netUpdate(dt){
+  if (!net) return;
+  net.stateT += dt;
+  if (net.stateT >= 0.1){ net.stateT = 0; netSend(stMsg()); }
+  if (net.role === 'host' && !net.priv && discCh){
+    net.announceT += dt;
+    if (net.announceT >= 1.5){
+      net.announceT = 0;
+      try { discCh.postMessage({ t:'ann', code:net.code, players:net.peers.size+1 }); } catch(e){}
+    }
+  }
+  const k = 1 - Math.exp(-12*dt);
+  for (const [id,p] of net.peers){
+    if (nowS() - p.seen > 6){ removeRemote(p); net.peers.delete(id); continue; }
+    if (!p.mesh) continue;
+    p.mesh.g.position.x += (p.tx - p.mesh.g.position.x)*k;
+    p.mesh.g.position.y += (p.ty - p.mesh.g.position.y)*k;
+    p.mesh.g.position.z += (p.tz - p.mesh.g.position.z)*k;
+    if (p.tqv) p.mesh.g.quaternion.slerp(p.tq, k);
+  }
+}
+
+// ---- chat ----
+const chatBox = document.getElementById('chatbox');
+const chatIn = document.getElementById('chat-in');
+const chatLog = document.getElementById('chatlog');
+let chatOpen = false;
+function openChat(){
+  if (chatOpen) return;
+  chatOpen = true;
+  chatBox.classList.add('open');
+  chatIn.value = '';
+  setTimeout(()=>chatIn.focus(), 0);
+}
+function closeChat(){
+  chatOpen = false;
+  chatBox.classList.remove('open');
+  chatIn.blur();
+}
+function addChatMsg(name, text, sys){
+  const line = document.createElement('div');
+  line.className = 'chatline' + (sys ? ' sys' : '');
+  if (sys) line.textContent = '· ' + text;
+  else {
+    const b = document.createElement('b');
+    b.textContent = name + ': ';
+    line.appendChild(b);
+    line.appendChild(document.createTextNode(text));
+  }
+  chatLog.appendChild(line);
+  while (chatLog.children.length > 6) chatLog.removeChild(chatLog.firstChild);
+  setTimeout(()=>{ if (line.parentNode) line.parentNode.removeChild(line); }, 14000);
+}
+const bubbles = [];
+function makeBubbleSprite(name, text){
+  const t = String(text).slice(0,90);
+  const cv = document.createElement('canvas');
+  let g = cv.getContext('2d');
+  g.font = '600 30px "IBM Plex Mono", monospace';
+  const nameTxt = name + ': ';
+  const wName = g.measureText(nameTxt).width;
+  const wText = Math.min(g.measureText(t).width, 620);
+  cv.width = Math.ceil(wName + wText) + 36;
+  cv.height = 56;
+  g = cv.getContext('2d');
+  g.font = '600 30px "IBM Plex Mono", monospace';
+  g.textBaseline = 'middle';
+  g.fillStyle = 'rgba(20,19,16,0.92)';
+  g.fillRect(0,0,cv.width,cv.height);
+  g.strokeStyle = '#e5a13c'; g.lineWidth = 2; g.strokeRect(1,1,cv.width-2,cv.height-2);
+  g.fillStyle = '#e5a13c';
+  g.fillText(nameTxt, 18, 30);
+  g.fillStyle = '#ece7db';
+  const full = g.measureText(t).width;
+  const trunc = full > 620 ? t.slice(0, Math.max(1, Math.floor(t.length*620/full))) + '…' : t;
+  g.fillText(trunc, 18 + wName, 30);
+  const tex = new THREE.CanvasTexture(cv);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map:tex, transparent:true, depthTest:false }));
+  spr.scale.set(cv.width/230, cv.height/230, 1);
+  return spr;
+}
+function spawnBubble(follow, name, text){
+  const spr = makeBubbleSprite(name, text);
+  scene.add(spr);
+  bubbles.push({ spr, follow, until: nowS() + 5 });
+}
+function sendChat(text){
+  const name = sanitizeName(cfg.name);
+  addChatMsg(name, text);
+  spawnBubble('local', name, text);
+  netSend({ t:'chat', id:NET_ID, n:cfg.name, x:text });
+}
+chatIn.addEventListener('keydown', e=>{
+  e.stopPropagation();
+  if (e.key === 'Enter'){
+    const txt = chatIn.value.trim().slice(0,120);
+    if (txt) sendChat(txt);
+    closeChat();
+  } else if (e.key === 'Escape'){
+    closeChat();
+  }
+});
+
+/* ============================================================
+   [11] TOAST / ENTRADA / MENU / EDITOR
 ============================================================ */
 const toastEl = document.getElementById('toast');
 let toastT = 0;
@@ -1281,6 +1700,7 @@ let presetName = PRESETS[cfg.preset] ? cfg.preset : 'potato';
 const up = cfg.up;
 let lightsOn = !!cfg.lights;
 let menuOpen = false, editorOpen = false;
+let hostPriv = true;
 const menu = document.getElementById('menu');
 const editorEl = document.getElementById('editor');
 const keys = new Set();
@@ -1349,16 +1769,16 @@ function setCarPose(px,py,pz, qx,qy,qz,qw){
   body.setAngvel({ x:0, y:0, z:0 }, true);
 }
 function resetCar(){
-  setCarPose(0, spawnY(0,0), 0, 0,0,0,1);
+  setCarPose(0, spawnY(0,0), worldMode==='mp' ? -24 : 0, 0,0,0,1);
   steerState = 0;
-  camPos.set(0, 3.4, -9);
+  camPos.set(0, 3.4, worldMode==='mp' ? -33 : -9);
 }
 let nanResets = 0;
 function hardResetCar(){
-  setCarPose(0, spawnY(0,0), 0, 0,0,0,1);
+  setCarPose(0, spawnY(0,0), worldMode==='mp' ? -24 : 0, 0,0,0,1);
   steerState = 0;
   for (const w of wheels){ w.macFeed=0; w.x3fFeed=0; w.lowCmd=0; w.distVSm=0.70; w.distV=0.70; w.comp=0; w.load=0; w.spinVel=0; }
-  camPos.set(0, 3.4, -9);
+  camPos.set(0, 3.4, worldMode==='mp' ? -33 : -9);
   nanResets++;
   toast('ESTADO FÍSICO INVÁLIDO — CARRO REPOSICIONADO');
 }
@@ -1375,7 +1795,12 @@ function resetWorld(){
 function setMenu(open){
   menuOpen = open;
   menu.classList.toggle('open', open);
-  if (open){ keys.clear(); updateMenuUI(); }
+  if (open){
+    keys.clear();
+    updateMenuUI();
+    renderPublicServers();
+    if (discCh){ try { discCh.postMessage({ t:'query' }); } catch(e){} }
+  }
   else if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
 }
 function setEditor(open){
@@ -1546,7 +1971,43 @@ function updateSuspSub(){
   document.getElementById('sub-susp').textContent =
     `${names[suspType] || 'DOUBLE WISHBONE'} · ${n} RAY${n>1?'S':''} · RAPIER`;
 }
-
+function renderPublicServers(){
+  const el = document.getElementById('m-servs');
+  if (!el) return;
+  const now = nowS();
+  const rows = [];
+  for (const [code, s] of publicServers){
+    if (now - s.seen > 4){ publicServers.delete(code); continue; }
+    if (net && net.code === code) continue;
+    rows.push({ code, players:s.players });
+  }
+  el.innerHTML = '';
+  if (!rows.length){
+    const d = document.createElement('div');
+    d.className = 'm-note';
+    d.textContent = 'nenhum servidor público visível — abra outra aba/janela, crie um servidor PÚBLICO e ele aparece aqui';
+    el.appendChild(d);
+    return;
+  }
+  rows.sort((a,b)=>a.code.localeCompare(b.code));
+  for (const r of rows){
+    const line = document.createElement('div');
+    line.className = 'servrow';
+    const lab = document.createElement('span');
+    lab.textContent = r.code + ' — ' + r.players + ' piloto(s)';
+    const b = document.createElement('button');
+    b.className = 'mbtn'; b.textContent = 'ENTRAR';
+    b.addEventListener('click', ()=>netJoin(r.code));
+    line.appendChild(lab); line.appendChild(b);
+    el.appendChild(line);
+  }
+}
+function netStatusText(){
+  if (!net) return 'desconectado';
+  const who = net.role === 'host' ? 'HOSPEDANDO' : 'CONECTADO';
+  return who + ' "' + net.code + '" · ' + (net.priv ? 'privado' : 'público') +
+    ' · ' + (net.peers.size + 1) + ' piloto(s) · mapa MP';
+}
 function updateMenuUI(){
   const $ = id => document.getElementById(id);
   document.querySelectorAll('.pbtn[data-preset]').forEach(b=>
@@ -1558,9 +2019,15 @@ function updateMenuUI(){
   $('up-pix').checked = up.pix;
   const s = effScale();
   $('up-res').innerHTML = `interno: <b>${Math.round(innerWidth*s)}×${Math.round(innerHeight*s)}px</b> → tela ${innerWidth}×${innerHeight}`;
-  $('m-proc').checked = procOn;
+  $('m-name').value = cfg.name;
+  $('m-priv').classList.toggle('on', hostPriv);
+  $('m-pub').classList.toggle('on', !hostPriv);
+  $('m-privhint').textContent = hostPriv ? 'privado = só entra pelo código' : 'público = aparece na lista de servidores públicos';
+  $('m-netstatus').textContent = netStatusText();
+  $('m-leave').disabled = !net;
+  $('m-proc').checked = worldMode === 'proc';
   $('m-seed').value = procSeedStr || (cfg.proc && cfg.proc.seed) || '';
-  $('m-procnote').innerHTML = procOn ? procStats
+  $('m-procnote').innerHTML = worldMode === 'proc' ? procStats
     : 'mundo padrão plano · ative e gere montanhas/morros determinísticas a partir de uma seed';
   $('m-rays').value = RAY_OFFSETS.length;
   $('m-rays-n').textContent = RAY_OFFSETS.length;
@@ -1570,6 +2037,7 @@ function updateMenuUI(){
   $('m-volp').textContent = cfg.vol+'%';
   $('m-wav').innerHTML = wavNote;
   updateMemUI(); updateMenuStats();
+  renderPublicServers();
 }
 function memLine(){
   const a = (localStorage.getItem(LS_CFG)||'').length;
@@ -1586,7 +2054,7 @@ function updateMenuStats(){
     `FPS <b>${fpsEMA|0}</b> · DRAWS <b>${lastCalls}</b> · TRIS <b>${fmtK(lastTris)}</b><br>` +
     `VISÍVEIS <b>${statV}/${cullables.length}</b> · FRUSTUM <b>${statF}</b> · OCLUSÃO <b>${statO}</b> · CACHE <b>${cacheHits}</b><br>` +
     `RESOLUÇÃO <b>${rw}×${rh}</b> → ${innerWidth}×${innerHeight} (${Math.round(effScale()*100)}%)<br>` +
-    `RESYNCS FÍSICOS <b>${nanResets}</b> · MUNDO <b>${procOn ? 'PROCEDURAL' : 'PLANO'}</b> · CCD <b>ON</b>`;
+    `RESYNCS FÍSICOS <b>${nanResets}</b> · MUNDO <b>${worldMode.toUpperCase()}</b> · CCD <b>ON</b>`;
 }
 function bindMenuUI(){
   const $ = id => document.getElementById(id);
@@ -1597,19 +2065,41 @@ function bindMenuUI(){
   $('up-on').addEventListener('change', e=>{ up.on = e.target.checked; cfg.up = up; saveCfg(); applyResolution(); updateMenuUI(); });
   $('up-scale').addEventListener('input', e=>{ up.scale = sClamp(+e.target.value/100, 0.3, 1, 0.5); cfg.up = up; saveCfg(); applyResolution(); updateMenuUI(); });
   $('up-pix').addEventListener('change', e=>{ up.pix = e.target.checked; cfg.up = up; saveCfg(); applyResolution(); });
+  // multiplayer
+  $('m-name').addEventListener('change', e=>{
+    cfg.name = sanitizeName(e.target.value);
+    e.target.value = cfg.name;
+    saveCfg();
+  });
+  $('m-priv').addEventListener('click', ()=>{ hostPriv = true; updateMenuUI(); });
+  $('m-pub').addEventListener('click', ()=>{ hostPriv = false; updateMenuUI(); });
+  $('m-host').addEventListener('click', ()=>{
+    const code = sanitizeCode($('m-hostcode').value);
+    if (!code){ toast('DIGITE UM CÓDIGO PARA O SERVIDOR'); return; }
+    netHost(code, hostPriv);
+  });
+  $('m-join').addEventListener('click', ()=>{
+    const code = sanitizeCode($('m-joincode').value);
+    if (!code){ toast('DIGITE O CÓDIGO DO SERVIDOR'); return; }
+    netJoin(code);
+  });
+  $('m-leave').addEventListener('click', ()=>netLeave(false));
+  // procedural — bloqueado enquanto num servidor (mapa MP é fixo)
   $('m-proc').addEventListener('change', e=>{
+    if (net){ e.target.checked = (worldMode==='proc'); toast('SAIA DO SERVIDOR PARA TROCAR DE MUNDO'); return; }
     if (e.target.checked) applyProcWorld(($('m-seed').value || 'x3f-6').slice(0,32).trim() || 'x3f-6');
     else disableProc();
     updateMenuUI();
   });
   $('m-gen').addEventListener('click', ()=>{
+    if (net){ toast('SAIA DO SERVIDOR PARA TROCAR DE MUNDO'); return; }
     $('m-proc').checked = true;
     applyProcWorld(($('m-seed').value || 'x3f-6').slice(0,32).trim() || 'x3f-6');
     updateMenuUI();
   });
   $('m-seed-rnd').addEventListener('click', ()=>{
     $('m-seed').value = Math.random().toString(36).slice(2,8);
-    if (procOn || $('m-proc').checked) applyProcWorld($('m-seed').value);
+    if (!net && ($('m-proc').checked || worldMode==='proc')) applyProcWorld($('m-seed').value);
     updateMenuUI();
   });
   $('m-rays').addEventListener('input', e=>{
@@ -1634,7 +2124,8 @@ function bindMenuUI(){
   $('m-save').addEventListener('click', ()=>{ saveCfg(); saveState(); saveCar(); updateMenuUI(); });
   $('m-wipe').addEventListener('click', ()=>{
     try { localStorage.removeItem(LS_STATE); localStorage.removeItem(LS_CFG); localStorage.removeItem(LS_CAR); } catch(e){}
-    if (procOn) disableProc(true);
+    netLeave(true);
+    if (worldMode === 'proc') disableProc(true);
     resetWorld(); restoreDefaultCar(); updateMenuUI();
   });
 }
@@ -1663,6 +2154,7 @@ addEventListener('keydown', e=>{
     else if ((e.code==='Delete' || e.code==='Backspace') && selPart) deletePart(selPart);
     return;
   }
+  if (e.code==='Semicolon' || e.key===';'){ e.preventDefault(); openChat(); return; }
   if (['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code)) e.preventDefault();
   keysDown(e);
   if (e.code==='KeyP') setMenu(true);
@@ -1689,7 +2181,7 @@ addEventListener('pointermove', e=>{
 addEventListener('wheel', e=>{ camDist = sClamp(camDist+e.deltaY*0.008, 4.5, 15, 8.2); });
 
 /* ============================================================
-   [11] PERSISTÊNCIA — spawn/restauração VALIDADOS contra o solo
+   [12] PERSISTÊNCIA — tag de mundo (f / p:seed / mp)
 ============================================================ */
 let odo = 0, lastSave = 0;
 function saveState(){
@@ -1705,7 +2197,7 @@ function saveState(){
   try {
     localStorage.setItem(LS_STATE, JSON.stringify({
       odo:+odo.toFixed(2),
-      w: procOn ? 'p:' + procSeedStr : 'f',
+      w: worldMode === 'proc' ? 'p:' + procSeedStr : worldMode,
       car:[t.x,t.y,t.z,q.x,q.y,q.z,q.w],
       crates:cratesOut
     }));
@@ -1716,8 +2208,8 @@ function loadState(){
   let d = null;
   try { d = JSON.parse(localStorage.getItem(LS_STATE) || 'null'); } catch(e){}
   if (!d || typeof d !== 'object'){ setCarPose(0, spawnY(0,0), 0, 0,0,0,1); return false; }
-  const curTag = procOn ? 'p:' + procSeedStr : 'f';
-  const match = typeof d.w === 'string' && d.w === curTag;
+  const curTag = worldMode === 'proc' ? 'p:' + procSeedStr : worldMode;
+  const match = typeof d.w === 'string' && d.w === curTag && worldMode !== 'mp';
   let placed = false;
   if (match){
     const C = numArr(d.car, 7);
@@ -1725,8 +2217,6 @@ function loadState(){
       const qw = Math.hypot(C[3],C[4],C[5],C[6]);
       const inWorld = Math.abs(C[0]) <= 115 && Math.abs(C[2]) <= 115 && C[1] > -5 && C[1] < 80;
       if (qw > 0.5 && qw < 1.5 && inWorld){
-        // nunca restaurar dentro do solo nem em queda absurda:
-        // y fica entre solo+0.9 e solo+6 (heightfield não tem salientes)
         const gy = terrainHeight(C[0], C[2]);
         const y = sClamp(C[1], gy + 0.9, gy + 6.0, gy + 1.0);
         setCarPose(C[0], y, C[2], C[3],C[4],C[5],C[6]);
@@ -1761,11 +2251,16 @@ function loadState(){
   odo = sClamp(numSafe(d.odo, 0), 0, 1e9, 0);
   return placed;
 }
-addEventListener('beforeunload', ()=>{ saveCfg(); saveState(); saveCar(); });
-document.addEventListener('visibilitychange', ()=>{ if (document.hidden){ saveCfg(); saveState(); saveCar(); } });
+addEventListener('beforeunload', ()=>{
+  saveCfg(); saveState(); saveCar();
+  if (net){ try { net.bc.postMessage({ t:'leave', id:NET_ID }); } catch(e){} }
+});
+document.addEventListener('visibilitychange', ()=>{
+  if (document.hidden){ saveCfg(); saveState(); saveCar(); }
+});
 
 /* ============================================================
-   [12] FÍSICA — bump-stop + barreiras anti-NaN
+   [13] FÍSICA — bump-stop + barreiras anti-NaN
 ============================================================ */
 const carQ = new THREE.Quaternion();
 const carUp = new THREE.Vector3(), carFwd = new THREE.Vector3(), carRight = new THREE.Vector3();
@@ -1833,7 +2328,6 @@ function suspension(w, dt){
   }
   w.hits = hits; w.grounded = hits > 0;
   if (w.grounded){
-    // raw NÃO clampado: além do curso entra o bump-stop
     const raw = sum/hits - CFG.maxDrop;
     const compLim = CFG.maxComp*sp.comp;
     const comp = sClamp(raw, -CFG.maxDrop, compLim, 0);
@@ -1852,7 +2346,6 @@ function suspension(w, dt){
     else if (suspType==='lowrider') feed = w.lowCmd * 0.38;
     let F = CFG.k*sp.k*massF*(comp + feed) + CFG.c*sp.c*massF*vComp;
     F = sClamp(F, -CFG.maxPull*massF, CFG.maxPush*massF, 0);
-    // BUMP-STOP: fundou o curso? a mola endurece 3× e NÃO deixa o carro afundar
     if (raw > compLim){
       F += (raw - compLim) * CFG.k * 3 * massF;
       F = Math.min(F, CFG.maxPush*massF*2.6);
@@ -1939,7 +2432,6 @@ function sampleX3F(){
   for (let i=0;i<4;i++){
     const w = wheels[i];
     const gw = castDown(w.x, -0.10, w.z+0.55, sensDbg[2+i]);
-    // compara distâncias (não altitudes absolutas): solo à frente mais longe = buraco
     w.x3fFeed = sClamp(((carMean + gw)/2 - gNow)*0.55, -0.12, 0.16, 0);
   }
 }
@@ -1995,7 +2487,7 @@ function physicsStep(dt){
 }
 
 /* ============================================================
-   [13] VISUAL / HUD / LOOP — rays RE-PROJETADOS na pose atual
+   [14] VISUAL / HUD / LOOP
 ============================================================ */
 function updateWheelVisual(w, dt){
   w.spin += w.spinVel*dt;
@@ -2040,7 +2532,6 @@ function updateVisuals(dt){
     c.mesh.position.set(p.x,p.y,p.z);
     c.mesh.quaternion.set(q.x,q.y,q.z,q.w);
   }
-  // RAYS: origem/fim recalculados com a pose PÓS-STEP — colados nas rodas
   if (raysVisible){
     const rl = CFG.rest + CFG.maxDrop + CFG.wheelR;
     let pi = 0, qi = 0;
@@ -2092,6 +2583,24 @@ function updateVisuals(dt){
     }
     lookGeo.attributes.position.needsUpdate = true;
   }
+  // bolhas de chat seguem o carro do dono
+  const now = nowS();
+  for (let i = bubbles.length-1; i >= 0; i--){
+    const b = bubbles[i];
+    if (now > b.until){
+      scene.remove(b.spr);
+      b.spr.material.map.dispose();
+      b.spr.material.dispose();
+      bubbles.splice(i,1);
+      continue;
+    }
+    if (b.follow === 'local'){
+      b.spr.position.set(carPos.x, carPos.y + 2.1, carPos.z);
+    } else {
+      const p = net && net.peers.get(b.follow);
+      if (p && p.mesh) b.spr.position.set(p.mesh.g.position.x, p.mesh.g.position.y + 2.1, p.mesh.g.position.z);
+    }
+  }
   sun.position.set(carPos.x+12, carPos.y+18, carPos.z+6);
   sun.target.position.copy(carPos);
 }
@@ -2121,8 +2630,9 @@ const spdEl = document.getElementById('spd'), gearEl = document.getElementById('
       raysInd = document.getElementById('rays-ind'),
       stFps = document.getElementById('st-fps'), stDraw = document.getElementById('st-draw'),
       stTri = document.getElementById('st-tri'), stCull = document.getElementById('st-cull'),
-      stCache = document.getElementById('st-cache'), stOdo = document.getElementById('st-odo');
-let lastCalls = 0, lastTris = 0, fpsEMA = 60, stripAcc = 0;
+      stCache = document.getElementById('st-cache'), stOdo = document.getElementById('st-odo'),
+      chipMp = document.getElementById('chip-mp');
+let lastCalls = 0, lastTris = 0, fpsEMA = 60, stripAcc = 0, mpTick = 0;
 function updateHUD(dt){
   const fwd = linV.dot(carFwd);
   spdEl.textContent = isF(fwd) ? Math.round(Math.abs(fwd)*3.6) : 0;
@@ -2149,7 +2659,24 @@ function updateHUD(dt){
     stCull.textContent = statF+'F/'+statO+'O';
     stCache.textContent = cacheHits;
     stOdo.textContent = odo < 1000 ? (odo|0)+' m' : (odo/1000).toFixed(2)+' km';
-    if (menuOpen){ updateMenuStats(); updateMemUI(); }
+    if (net){
+      chipMp.style.display = 'inline-block';
+      chipMp.classList.add('on');
+      chipMp.textContent = (net.role==='host' ? 'HOST · ' : 'MP · ') +
+        net.code.toUpperCase() + ' · ' + (net.peers.size+1);
+    } else {
+      chipMp.style.display = 'none';
+    }
+    if (menuOpen){
+      updateMenuStats(); updateMemUI();
+      mpTick++;
+      if (mpTick >= 4){
+        mpTick = 0;
+        renderPublicServers();
+        if (discCh){ try { discCh.postMessage({ t:'query' }); } catch(e){} }
+        document.getElementById('m-netstatus').textContent = netStatusText();
+      }
+    }
   }
 }
 
@@ -2162,6 +2689,7 @@ if (cfg.proc.on){
   bootMsg.textContent = 'gerando terreno procedural…';
   applyProcWorld(cfg.proc.seed, true);
 }
+if (worldMode !== 'proc') setWorldMode('flat');
 bootMsg.textContent = 'restaurando memória salva…';
 loadState();
 raysVisible = !!cfg.rays;
@@ -2175,7 +2703,7 @@ updateSuspSub(); updateEditorUI();
 let last = performance.now()/1000, acc = 0, saveT = 0, booted = false;
 function frame(){
   requestAnimationFrame(frame);
-  const now = performance.now()/1000;
+  const now = nowS();
   const rawDt = now - last;
   last = now;
   const dt = isF(rawDt) ? Math.min(rawDt, 0.05) : 0;
@@ -2189,6 +2717,7 @@ function frame(){
     if (saveT > 6){ saveT = 0; saveState(); }
   } else acc = 0;
 
+  netUpdate(dt);
   syncBody();
   updateVisuals(dt);
   updateCamera(dt);
