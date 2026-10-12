@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WB-6 — Chassi Raycast · Multiplayer + Chat</title>
+<title>WB-6 — Chassi Raycast · Softbody Experimental</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
@@ -45,6 +45,7 @@
   .p-title .chips{margin-top:10px;display:flex;gap:6px;flex-wrap:wrap}
   .chip{font-size:9px;letter-spacing:.12em;padding:3px 7px;border:1px solid var(--line);color:var(--dim)}
   .chip.on{color:#151410;background:var(--accent);border-color:var(--accent)}
+  .chip.sb{color:var(--cyan);border-color:var(--cyan)}
 
   .p-speed{top:18px;right:18px;text-align:right;min-width:158px}
   .spd-row{display:flex;align-items:baseline;justify-content:flex-end;gap:7px}
@@ -73,7 +74,6 @@
     font-size:9px;letter-spacing:.12em;color:var(--dim);white-space:nowrap}
   #stats b{color:var(--ink);font-weight:600}
 
-  /* chat */
   #chatlog{position:absolute;bottom:52px;left:50%;transform:translateX(-50%);
     display:flex;flex-direction:column;align-items:center;gap:3px;max-width:70vw}
   .chatline{background:var(--panel);border:1px solid var(--line);padding:4px 10px;
@@ -105,6 +105,7 @@
   .m-sec{margin-bottom:15px}
   .m-sec.last{margin-bottom:2px}
   .m-label{font-size:9px;letter-spacing:.2em;color:var(--dim);margin-bottom:8px}
+  .m-label.x{color:var(--cyan)}
   .m-note{font-size:9.5px;color:var(--dim);line-height:1.8}
   .m-note b{color:var(--ink)}
   .preset-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
@@ -128,6 +129,7 @@
   .sw i::after{content:'';position:absolute;top:2px;left:2px;width:12px;height:12px;background:#57534a;transition:.15s}
   .sw input:checked + i{background:var(--accent);border-color:var(--accent)}
   .sw input:checked + i::after{left:18px;background:#151410}
+  .sw.cy input:checked + i{background:var(--cyan);border-color:var(--cyan)}
   input[type=range]{accent-color:var(--accent)}
   .tin{width:110px;background:#191813;border:1px solid var(--line);color:var(--ink);
     font-family:inherit;font-size:10.5px;padding:3px 6px}
@@ -169,7 +171,7 @@
 
 <div id="boot">
   <div class="boot-title">WB<b>—</b>6</div>
-  <div class="boot-sub">MULTIPLAYER · CHAT · 6 SUSPENSÕES</div>
+  <div class="boot-sub">SOFTBODY EXPERIMENTAL · MP · 6 SUSPENSÕES</div>
   <div class="boot-bar"></div>
   <div id="boot-msg">carregando módulos…</div>
 </div>
@@ -185,6 +187,7 @@
       <span class="chip on" id="chip-lights">FARÓIS</span>
       <span class="chip on" id="chip-rays">DEBUG RAYS</span>
       <span class="chip" id="chip-mp" style="display:none">MP</span>
+      <span class="chip sb" id="chip-sb" style="display:none">SOFTBODY</span>
     </div>
   </div>
   <div class="panel p-speed">
@@ -246,7 +249,7 @@
       <div class="row-line" style="margin-top:8px;border-top:1px dashed var(--line);padding-top:8px">
         <span id="m-netstatus">desconectado</span>
         <button class="mbtn warn" id="m-leave" disabled>SAIR</button></div>
-      <div class="m-note">ao criar/entrar, o <b>mapa multiplayer</b> substitui o mundo atual: piso verde com rampas (pequena, média, grande e larga) e dois setores de quebra-molas — em série e alternados por lado. o chat abre com <b>;</b> no jogo. funciona entre abas/janelas deste navegador no mesmo computador.</div>
+      <div class="m-note">o mapa multiplayer tem piso verde, 4 rampas e dois setores de quebra-molas. a suspensão dos outros pilotos é simulada no seu cliente por raycasts locais — ligue o debug (G) e veja as rodas deles trabalhar nos bumps. chat com <b>;</b>.</div>
     </div>
 
     <div class="m-sec">
@@ -283,6 +286,33 @@
       <div class="row-line"><span></span>
         <button class="mbtn" id="m-gen">GERAR / REGENERAR</button></div>
       <div id="m-procnote" class="m-note"></div>
+    </div>
+
+    <div class="m-sec">
+      <div class="m-label x">EXPERIMENTAL — SOFTBODY</div>
+      <div class="row-line"><span>habilitar softbody <span class="dim">(desliga sozinho em multiplayer)</span></span>
+        <label class="sw cy"><input type="checkbox" id="sb-on"><i></i></label></div>
+      <div class="row-line"><span>modelo</span>
+        <select class="e-select" id="sb-model" style="width:200px">
+          <option value="nodebeam">NODE-BEAM (nós e vigas)</option>
+          <option value="fem" disabled>FEM — indisponível no perfil low-end</option>
+        </select></div>
+      <div class="row-line"><span>preservação de volume (anti-colapso)</span>
+        <label class="sw cy"><input type="checkbox" id="sb-vol"><i></i></label></div>
+      <div class="row-line"><span>detecção de colisão em camadas (casting rays)</span>
+        <label class="sw cy"><input type="checkbox" id="sb-layers"><i></i></label></div>
+      <div class="row-line"><span>quantia de casting rays <b id="sb-raysv">256</b> <span class="dim">(32–5000)</span></span>
+        <input type="number" id="sb-rays" class="tin" min="32" max="5000" step="1" value="256"></div>
+      <div class="row-line"><span>self-collision</span>
+        <label class="sw cy"><input type="checkbox" id="sb-self"><i></i></label></div>
+      <div class="row-line"><span>resolução de colisão contínua</span>
+        <label class="sw cy"><input type="checkbox" id="sb-ccd"><i></i></label></div>
+      <div class="row-line"><span>taxa do softbody <span class="dim">(digite 50–10000)</span></span>
+        <span style="display:flex;align-items:center;gap:6px">
+          <input type="number" id="sb-hz" class="tin" min="50" max="10000" step="1" value="240">
+          <b id="sb-hzv" style="min-width:44px">240 Hz</b>
+        </span></div>
+      <div id="sb-stats" class="m-note"></div>
     </div>
 
     <div class="m-sec">
@@ -452,7 +482,8 @@ const PRESET_NAMES = ['potato','baixo','medio','alto'];
 const SUSP_NAMES = ['double','single','mac','leaf','x3f','lowrider'];
 
 let cfg = { name:'PILOTO', preset:'potato', lights:true, rays:true, rayCount:6, occ:true,
-            snd:true, vol:70, up:{ on:true, scale:0.5, pix:false }, proc:{ on:false, seed:'x3f-6' } };
+            snd:true, vol:70, up:{ on:true, scale:0.5, pix:false }, proc:{ on:false, seed:'x3f-6' },
+            soft:{ on:false, model:'nodebeam', vol:true, layers:true, rays:256, selfcol:true, ccd:true, hz:240 } };
 try {
   const s = JSON.parse(localStorage.getItem(LS_CFG) || 'null');
   if (s && typeof s === 'object'){
@@ -467,6 +498,14 @@ try {
     if (s.proc && typeof s.proc === 'object')
       cfg.proc = { on: !!s.proc.on,
         seed: (typeof s.proc.seed === 'string' && s.proc.seed.length <= 32) ? s.proc.seed : 'x3f-6' };
+    if (s.soft && typeof s.soft === 'object')
+      cfg.soft = {
+        on: !!s.soft.on, model: s.soft.model === 'fem' ? 'nodebeam' : 'nodebeam',
+        vol: s.soft.vol !== false, layers: s.soft.layers !== false,
+        rays: sClamp(Math.round(numSafe(s.soft.rays, 256)), 32, 5000, 256),
+        selfcol: s.soft.selfcol !== false, ccd: s.soft.ccd !== false,
+        hz: sClamp(Math.round(numSafe(s.soft.hz, 240)), 50, 10000, 240)
+      };
   }
 } catch(e){}
 function saveCfg(){ try { localStorage.setItem(LS_CFG, JSON.stringify(cfg)); } catch(e){} }
@@ -591,10 +630,6 @@ function cullPass(now){
 
 /* ============================================================
    [4] GERÊNCIA DE MUNDOS — flat | proc | mp
-   *** FIX DO BUG "ATRAVESSA O CHÃO": as chamadas antigas de
-   toggleFlatCol não passavam o makeDesc, e o createCollider
-   do Rapier cai no default da API — uma BOLA de raio 0.5
-   como "chão". Agora o desc é obrigatório e guardado. ***
 ============================================================ */
 const FIXED = 1/60;
 const world = new RAPIER.World({ x:0, y:-19, z:0 });
@@ -653,7 +688,6 @@ let floorTex;
   floor.rotation.x = -Math.PI/2;
   scene.add(floor);
   flat.floorMesh = floor;
-  // *** CORREÇÃO: desc obrigatório aqui (era a causa do bug) ***
   toggleFlatCol(flat.floor, true,
     ()=>RAPIER.ColliderDesc.cuboid(120,0.5,120).setTranslation(0,-0.5,0).setFriction(1.0));
 }
@@ -669,7 +703,6 @@ function addFlatBlock(x,y,z,hx,hy,hz,ax=0){
   const entry = regStatic(m, true);
   const blk = { body:b, mesh:m, params:[x,y,z,hx,hy,hz,ax], col:null, entry };
   flat.blocks.push(blk);
-  // *** CORREÇÃO: desc obrigatório aqui também ***
   toggleFlatCol(blk, true,
     ()=>RAPIER.ColliderDesc.cuboid(hx,hy,hz).setFriction(1.0));
 }
@@ -815,7 +848,7 @@ function terrainHeight(x, z){
 }
 const spawnY = (x = 0, z = 0) => terrainHeight(x, z) + 1.0;
 
-/* ---- 4c. MAPA MULTIPLAYER — piso verde, rampas e quebra-molas ---- */
+/* ---- 4c. MAPA MULTIPLAYER ---- */
 const mpw = { built:false, floorMesh:null, floor:{ col:null }, blocks:[] };
 const mpGreenTex = ()=>{
   const cv = document.createElement('canvas'); cv.width = cv.height = 256;
@@ -854,14 +887,11 @@ function buildMpWorld(){
     mpw.blocks.push(blk);
     return blk;
   };
-  // RAMPAS — pequena, média, grande e larga (lado oeste)
-  mpBlock(-14, 0.11, -12, 1.3, 0.11, 2.4, 0.14);   // pequena
-  mpBlock(-14, 0.18, -5,  1.5, 0.18, 2.6, 0.26);   // média
-  mpBlock(-14, 0.26,  2,  1.8, 0.26, 3.0, 0.40);   // grande
-  mpBlock(-14, 0.17, 10,  3.0, 0.17, 2.6, 0.24);   // larga
-  // QUEBRA-MOLAS EM SÉRIE — 10 seguidos, todas as rodas de uma vez
+  mpBlock(-14, 0.11, -12, 1.3, 0.11, 2.4, 0.14);
+  mpBlock(-14, 0.18, -5,  1.5, 0.18, 2.6, 0.26);
+  mpBlock(-14, 0.26,  2,  1.8, 0.26, 3.0, 0.40);
+  mpBlock(-14, 0.17, 10,  3.0, 0.17, 2.6, 0.24);
   for (let i=0;i<10;i++) mpBlock(8 + i*3, 0.05, -16, 1.4, 0.05, 0.30, 0, mpBumpMat);
-  // QUEBRA-MOLAS ALTERNADOS — zigue: testa esquerda/direita separadamente
   for (let i=0;i<12;i++) mpBlock(8 + i*3, 0.05, (i%2 ? 8-2.1 : 8+2.1), 1.3, 0.05, 0.34, 0, mpBumpMat);
   mpw.built = true;
 }
@@ -960,6 +990,7 @@ const glassCheap = new THREE.MeshStandardMaterial({ color:0xbfd8d2, roughness:0.
 const lampMat  = new THREE.MeshStandardMaterial({ color:0x2a2620, emissive:0xffe3ae, emissiveIntensity:3.4 });
 const brakeMat = new THREE.MeshStandardMaterial({ color:0x30100c, emissive:0xff2d18, emissiveIntensity:0.25 });
 const revMat   = new THREE.MeshStandardMaterial({ color:0x3a3a34, emissive:0xfff6e0, emissiveIntensity:0.15 });
+const sbShellMat = new THREE.MeshStandardMaterial({ color:0xd97a2b, roughness:0.5, metalness:0.05, flatShading:true });
 
 const chassis = new THREE.Group();
 scene.add(chassis);
@@ -1169,7 +1200,7 @@ const springGeo = new THREE.TubeGeometry(new HelixCurve(), 150, 0.016, 8, false)
 const _v1 = new THREE.Vector3(), _v2 = new THREE.Vector3(), _v3 = new THREE.Vector3(),
       _v4 = new THREE.Vector3(), _v5 = new THREE.Vector3(), _v6 = new THREE.Vector3(),
       _pa = new THREE.Vector3(), _pb = new THREE.Vector3(),
-      _sa = new THREE.Vector3(), _sb = new THREE.Vector3();
+      _sa = new THREE.Vector3(), _sb2 = new THREE.Vector3();
 
 function placeCyl(m, a, b, r = 0.026){
   _pa.subVectors(b, a);
@@ -1183,8 +1214,8 @@ function orientSpring(g, a, b){
   _sa.subVectors(b, a);
   const len = Math.max(_sa.length(), 0.02);
   g.position.copy(a).addScaledVector(_sa, 0.5);
-  _sb.copy(_sa).divideScalar(len);
-  g.quaternion.setFromUnitVectors(UP, _sb);
+  _sb2.copy(_sa).divideScalar(len);
+  g.quaternion.setFromUnitVectors(UP, _sb2);
   g.scale.set(1, len, 1);
 }
 const SUSP = {
@@ -1407,8 +1438,9 @@ function updateAudio(dt, throttle, spd){
 }
 
 /* ============================================================
-   [10] MULTIPLAYER — BroadcastChannel (abas do mesmo navegador)
-   + CHAT (;) com bolha 3D + lista de servidores públicos
+   [10] MULTIPLAYER — BroadcastChannel + CHAT
+   Carros remotos agora têm SUSPENSÃO COMPLETA simulada
+   localmente por raycasts (o mapa MP é determinístico).
 ============================================================ */
 const NET_ID = Math.random().toString(36).slice(2,10);
 const NET_DISC = 'wb6-disc';
@@ -1438,10 +1470,14 @@ function stMsg(){
     p:[+t.x.toFixed(2),+t.y.toFixed(2),+t.z.toFixed(2)],
     q:[+q.x.toFixed(3),+q.y.toFixed(3),+q.z.toFixed(3),+q.w.toFixed(3)] };
 }
-// ---- carro remoto (low-end: 2 meshes + 4 rodas + nametag) ----
+// ---- carro remoto COM suspensão articulada ----
 const remoteMat = new THREE.MeshStandardMaterial({ color:0x4a7f9e, roughness:0.5 });
 const remoteBoxGeo = new THREE.BoxGeometry(1.6,0.42,3.4);
 const remoteCapGeo = new THREE.CapsuleGeometry(0.5,0.16,6,10);
+const _rq = new THREE.Quaternion();
+const _r1 = new THREE.Vector3(), _r2 = new THREE.Vector3(), _r3 = new THREE.Vector3(),
+      _r4 = new THREE.Vector3(), _r5 = new THREE.Vector3(), _r6 = new THREE.Vector3();
+const RAYLEN_S = CFG.rest + CFG.maxDrop + CFG.wheelR;
 function makeTagSprite(name){
   const cv = document.createElement('canvas'); cv.width = 256; cv.height = 64;
   const g = cv.getContext('2d');
@@ -1463,17 +1499,66 @@ function makeRemote(name){
   const g = new THREE.Group();
   const m1 = new THREE.Mesh(remoteBoxGeo, remoteMat); m1.position.y = 0.13; g.add(m1);
   const m2 = new THREE.Mesh(remoteCapGeo, glassCheap); m2.position.y = 0.66; g.add(m2);
-  for (const [wx,wz] of [[0.95,1.15],[-0.95,1.15],[0.95,-1.15],[-0.95,-1.15]]){
-    const wm = new THREE.Mesh(tireGeo, tireMat);
-    wm.rotation.z = Math.PI/2; wm.position.set(wx,-0.45,wz); g.add(wm);
+  const rwheels = [];
+  for (const [wx,wz,wsx] of [[0.95,1.15,1],[-0.95,1.15,-1],[0.95,-1.15,1],[-0.95,-1.15,-1]]){
+    const sg = new THREE.Group(); g.add(sg);
+    const spinG = new THREE.Group(); sg.add(spinG);
+    const wm = new THREE.Mesh(tireGeo, tireMat); wm.rotation.z = Math.PI/2; wm.castShadow = true; spinG.add(wm);
+    const armA = new THREE.Mesh(cylGeo, armMat); armA.castShadow = true; g.add(armA);
+    const armB = new THREE.Mesh(cylGeo, armMat); armB.castShadow = true; g.add(armB);
+    const springG = new THREE.Group(); g.add(springG);
+    const spring = new THREE.Mesh(springGeo, springMat); springG.add(spring);
+    rwheels.push({
+      sg, spinG, armA, armB, springG, spring,
+      x:wx, z:wz, sx:wsx, spin:0,
+      pkA:new THREE.Vector3(wsx*0.45,-0.16,wz+0.40),
+      pkB:new THREE.Vector3(wsx*0.45,-0.16,wz-0.40),
+      top:new THREE.Vector3(wsx*0.86,0.10,wz+0.05)
+    });
   }
   const tag = makeTagSprite(name); tag.position.y = 1.45; g.add(tag);
   scene.add(g);
   regDyn(g, v=>v.copy(g.position), 2.4);
-  return { g, tag };
+  return { g, tag, rwheels, prev:new THREE.Vector3(), hasPrev:false };
 }
 function removeRemote(p){
   if (p.mesh){ scene.remove(p.mesh.g); p.mesh = null; }
+}
+const _peerRay = new RAPIER.Ray({x:0,y:0,z:0},{x:0,y:-1,z:0});
+// simula a suspensão do peer localmente: raycasts no mundo (determinístico)
+function updateRemoteVisual(p, dt){
+  const g = p.mesh.g;
+  const pos = g.position, q = g.quaternion;
+  const up = _r1.set(0,1,0).applyQuaternion(q);
+  const fwd = _r2.set(0,0,1).applyQuaternion(q);
+  let fwdSpd = 0;
+  if (dt > 0 && p.mesh.hasPrev){
+    _r3.subVectors(pos, p.mesh.prev).divideScalar(dt);
+    fwdSpd = _r3.dot(fwd);
+    if (!isF(fwdSpd)) fwdSpd = 0;
+  }
+  p.mesh.prev.copy(pos); p.mesh.hasPrev = true;
+  for (const rw of p.mesh.rwheels){
+    // hardpoint da roda no mundo
+    _r4.set(rw.x, CFG.hardY, rw.z).applyQuaternion(q).add(pos);
+    _peerRay.origin.x = _r4.x; _peerRay.origin.y = _r4.y; _peerRay.origin.z = _r4.z;
+    _peerRay.dir.x = -up.x; _peerRay.dir.y = -up.y; _peerRay.dir.z = -up.z;
+    let hit = null;
+    try { hit = world.castRay(_peerRay, RAYLEN_S, true, undefined, undefined, undefined, body); } catch(e){}
+    const d = (hit && isF(hit.toi) && hit.toi >= 0) ? hit.toi : RAYLEN_S;
+    const comp = sClamp(RAYLEN_S - d - CFG.maxDrop, -CFG.maxDrop, CFG.maxComp, 0);
+    const yW = CFG.hardY - (CFG.rest - comp);
+    rw.sg.position.set(rw.x, yW, rw.z);
+    rw.spin += (fwdSpd / CFG.wheelR) * dt;
+    rw.spinG.rotation.x = rw.spin;
+    // braços inferiores: pickups fixos → ball joint móvel (espaço local do group)
+    _r5.set(rw.x - rw.sx*0.06, yW - 0.10, rw.z);
+    placeCyl(rw.armA, rw.pkA, _r5, 0.024);
+    placeCyl(rw.armB, rw.pkB, _r5, 0.024);
+    // coilover: torre fixa → ponto do braço
+    _r6.set(rw.x - rw.sx*0.20, yW - 0.04, rw.z - 0.02);
+    orientSpring(rw.springG, rw.top, _r6);
+  }
 }
 // ---- mensagens ----
 function onNetMsg(e){
@@ -1485,13 +1570,13 @@ function onNetMsg(e){
     let p = net.peers.get(m.id);
     const nm = sanitizeName(m.n);
     if (!p){
-      p = { name:nm, mesh:null, tx:0, ty:2, tz:0, tq:new THREE.Quaternion(), tqv:false, seen:0, lastChat:0 };
+      p = { name:nm, mesh:null, tx:0, ty:2, tz:0, tq:new THREE.Quaternion(), tqv:false, seen:0 };
       net.peers.set(m.id, p);
       addChatMsg('SISTEMA', nm + ' entrou no servidor', true);
     }
     p.name = nm; p.seen = nowS();
     if (!p.mesh) p.mesh = makeRemote(nm);
-    netSend(stMsg());                       // apresenta-se ao recém-chegado
+    netSend(stMsg());
   } else if (m.t === 'leave'){
     const p = net.peers.get(m.id);
     if (p){ addChatMsg('SISTEMA', p.name + ' saiu', true); removeRemote(p); net.peers.delete(m.id); }
@@ -1525,7 +1610,8 @@ function netHost(code, priv){
             peers:new Map(), announceT:0, stateT:0 };
   } catch(e){ net = null; toast('BROADCASTCHANNEL INDISPONÍVEL NESTE NAVEGADOR'); return; }
   net.bc.onmessage = onNetMsg;
-  addChatMsg('SISTEMA', 'servidor "' + code + '" criado (' + (priv?'privado':'público') + ') — aguardando pilotos', true);
+  addChatMsg('SISTEMA', 'servidor "' + code + '" criado (' + (priv?'privado':'público') + ')', true);
+  softSuppress(true);
   enterMpWorld();
   toast('SERVIDOR "' + code.toUpperCase() + '" CRIADO — MAPA MP CARREGADO');
   updateMenuUI();
@@ -1539,6 +1625,7 @@ function netJoin(code){
   net.bc.onmessage = onNetMsg;
   netSend({ t:'join', id:NET_ID, n:cfg.name });
   addChatMsg('SISTEMA', 'você entrou no servidor "' + code + '"', true);
+  softSuppress(true);
   enterMpWorld();
   toast('ENTRANDO NO SERVIDOR "' + code.toUpperCase() + '"');
   updateMenuUI();
@@ -1549,6 +1636,7 @@ function netLeave(silent){
   try { net.bc.close(); } catch(e){}
   for (const p of net.peers.values()) removeRemote(p);
   net = null;
+  softSuppress(false);
   if (!silent){
     addChatMsg('SISTEMA', 'você saiu do servidor', true);
     leaveMpWorld();
@@ -1558,7 +1646,7 @@ function netLeave(silent){
 function enterMpWorld(){
   prevMode = worldMode;
   setWorldMode('mp');
-  setCarPose(0, 1.0, -24, 0,0,0,1);   // spawn do mapa MP
+  setCarPose(0, 1.0, -24, 0,0,0,1);
   camPos.set(0, 3.4, -33);
 }
 function leaveMpWorld(){
@@ -1587,6 +1675,7 @@ function netUpdate(dt){
     p.mesh.g.position.y += (p.ty - p.mesh.g.position.y)*k;
     p.mesh.g.position.z += (p.tz - p.mesh.g.position.z)*k;
     if (p.tqv) p.mesh.g.quaternion.slerp(p.tq, k);
+    updateRemoteVisual(p, dt);
   }
 }
 
@@ -1629,8 +1718,7 @@ function makeBubbleSprite(name, text){
   g.font = '600 30px "IBM Plex Mono", monospace';
   const nameTxt = name + ': ';
   const wName = g.measureText(nameTxt).width;
-  const wText = Math.min(g.measureText(t).width, 620);
-  cv.width = Math.ceil(wName + wText) + 36;
+  cv.width = Math.ceil(wName + Math.min(g.measureText(t).width, 620)) + 36;
   cv.height = 56;
   g = cv.getContext('2d');
   g.font = '600 30px "IBM Plex Mono", monospace';
@@ -1671,6 +1759,403 @@ chatIn.addEventListener('keydown', e=>{
     closeChat();
   }
 });
+
+/* ============================================================
+   [10b] SOFTBODY NODE-BEAM — EXPERIMENTAL
+   84 nós (massas) + ~600 vigas (molas c/ damping) 26-viz.
+   • ancoragem elástica ao frame rígido (reação → corpo)
+   • volume por soma de tetraedros; pressão anti-colapso
+   • muro de colisão: casting rays do centro p/ fora,
+     atualizado a ≤120 Hz, nós organizados em 3 camadas
+   • self-collision O(n²) com Set de pares conectados
+   • CCD preditivo: segmento pos→pos+v·h contra planos
+   • taxa digitada 50–10000 Hz, acumulador, cap honesto
+============================================================ */
+const SB_SKIN=0.20, SB_KA=26000, SB_CA=260, SB_KB=42000, SB_CB=170,
+      SB_KSEP=5000, SB_DMIN=0.22, SB_KVOL=9000, SB_KCON=9000, SB_CCON=260, SB_VMAX=40;
+const _sbA = new THREE.Vector3(), _sbB = new THREE.Vector3(), _sbC = new THREE.Vector3(),
+      _sbD = new THREE.Vector3(), _sbE = new THREE.Vector3(), _sbG = new THREE.Vector3();
+const SB = {
+  on:false, sup:false, built:false,
+  nodes:[], beams:[], faceIdx:[], conn:null, nodeWall:[],
+  mesh:null, posAttr:null,
+  wall:{ n:0, data:new Float32Array(5000*6), hash:new Map(), acc:0 },
+  dirs:{ n:0, arr:null },
+  acc:0, effHz:0, maxR:2.0, v0:1, warned:false
+};
+function sbHashKey(x, y, z){
+  return ((Math.floor(x)+512)&2047) | (((Math.floor(y)+512)&2047)<<11) | (((Math.floor(z)+512)&2047)<<22);
+}
+function sbVolume(outC){
+  const f = SB.faceIdx, nd = SB.nodes;
+  let V = 0, Cx = 0, Cy = 0, Cz = 0;
+  for (let t = 0; t < f.length; t += 3){
+    const A = nd[f[t]].p, B = nd[f[t+1]].p, C2 = nd[f[t+2]].p;
+    Cx += A.x + B.x + C2.x; Cy += A.y + B.y + C2.y; Cz += A.z + B.z + C2.z;
+    V += A.x*(B.y*C2.z - B.z*C2.y) - A.y*(B.x*C2.z - B.z*C2.x) + A.z*(B.x*C2.y - B.y*C2.x);
+  }
+  V /= 6;
+  const n3 = f.length || 1;
+  outC.set(Cx/n3, Cy/n3, Cz/n3);
+  return Math.abs(V);
+}
+function sbBuild(){
+  if (SB.built) return;
+  const nx=4, ny=3, nz=7;
+  const xs=[], ys=[], zs=[];
+  for (let i=0;i<nx;i++) xs.push(-0.8 + 1.6*i/(nx-1));
+  for (let j=0;j<ny;j++) ys.push(-0.30 + 0.70*j/(ny-1));
+  for (let k=0;k<nz;k++) zs.push(-1.7 + 3.4*k/(nz-1));
+  const id=(i,j,k)=>i+nx*(j+ny*k);
+  const N=nx*ny*nz;
+  const nodes=[];
+  let maxR=0;
+  for (let k=0;k<nz;k++)for(let j=0;j<ny;j++)for(let i=0;i<nx;i++){
+    const ax=xs[i], ay=ys[j], az=zs[k];
+    const r0=Math.hypot(ax, ay-0.05, az);
+    maxR=Math.max(maxR, r0);
+    nodes.push({
+      p:new THREE.Vector3(ax,ay,az), v:new THREE.Vector3(), F:new THREE.Vector3(),
+      m:760/N, a:new THREE.Vector3(ax,ay,az),
+      layer: r0>0.72*maxR?2 : r0>0.42*maxR?1:0
+    });
+  }
+  SB.maxR = maxR + 0.15;
+  const beams=[]; const conn=new Set();
+  for (let k=0;k<nz;k++)for(let j=0;j<ny;j++)for(let i=0;i<nx;i++){
+    for (let dk=0;dk<=1;dk++)for(let dj=-1;dj<=1;dj++)for(let di=-1;di<=1;di++){
+      const half = (dk>0) || (dk===0 && dj>0) || (dk===0 && dj===0 && di>0);
+      if (!half) continue;
+      const ii=i+di, jj=j+dj, kk=k+dk;
+      if (ii<0||ii>=nx||jj<0||jj>=ny||kk<0||kk>=nz) continue;
+      const a=id(i,j,k), b=id(ii,jj,kk);
+      const rest=nodes[a].a.distanceTo(nodes[b].a);
+      if (rest<1e-4) continue;
+      beams.push({ a, b, rest, k:SB_KB, c:SB_CB });
+      conn.add(a*1000+b); conn.add(b*1000+a);
+    }
+  }
+  const CORN = [
+    { on:(i)=>i===nx-1, q:[[1,0,0],[1,1,0],[1,1,1],[1,0,1]] },
+    { on:(i)=>i===0,    q:[[0,0,1],[0,1,1],[0,1,0],[0,0,0]] },
+    { on:(i,j)=>j===ny-1, q:[[0,1,0],[0,1,1],[1,1,1],[1,1,0]] },
+    { on:(i,j)=>j===0,    q:[[0,0,1],[0,0,0],[1,0,0],[1,0,1]] },
+    { on:(i,j,k2)=>k2===nz-1, q:[[0,0,1],[1,0,1],[1,1,1],[0,1,1]] },
+    { on:(i,j,k2)=>k2===0,    q:[[1,0,0],[0,0,0],[0,1,0],[1,1,0]] },
+  ];
+  const faces=[];
+  for (let k=0;k<nz;k++)for(let j=0;j<ny;j++)for(let i=0;i<nx;i++)
+    for (const f of CORN){
+      if (!f.on(i,j,k)) continue;
+      const q=f.q.map(d=>id(i+d[0], j+d[1], k+d[2]));
+      faces.push(q[0],q[1],q[2], q[0],q[2],q[3]);
+    }
+  const g=new THREE.BufferGeometry();
+  const pos=new Float32Array(faces.length*3);
+  g.setAttribute('position', new THREE.BufferAttribute(pos,3).setUsage(THREE.DynamicDrawUsage));
+  g.setIndex(faces);
+  g.computeVertexNormals();
+  const mesh=new THREE.Mesh(g, sbShellMat);
+  mesh.visible=false; mesh.castShadow=true; mesh.frustumCulled=false;
+  scene.add(mesh);
+  SB.mesh=mesh; SB.posAttr=g.attributes.position;
+  SB.nodes=nodes; SB.beams=beams; SB.faceIdx=faces; SB.conn=conn;
+  SB.nodeWall = nodes.map(()=>[]);
+  SB.v0 = sbVolume(_sbC);
+  SB.built = true;
+}
+function sbReset(){
+  for (const nde of SB.nodes){
+    nde.p.copy(nde.a).applyQuaternion(carQ).add(carPos);
+    nde.v.copy(linV);
+    if (!finVec(nde.p) || !finVec(nde.v)){ nde.p.copy(carPos); nde.v.set(0,0,0); }
+  }
+}
+function sbEnable(){
+  sbBuild();
+  sbReset();
+  SB.on = true;
+  SB.mesh.visible = true;
+  for (const p of carParts) p.mesh.visible = false;
+  document.getElementById('chip-sb').style.display = 'inline-block';
+}
+function sbDisable(){
+  SB.on = false;
+  if (SB.mesh) SB.mesh.visible = false;
+  for (const p of carParts) p.mesh.visible = true;
+  document.getElementById('chip-sb').style.display = 'none';
+}
+function softSuppress(on){
+  if (on){
+    if (cfg.soft.on && !SB.sup){
+      SB.sup = true;
+      if (SB.on) sbDisable();
+      toast('SOFTBODY SUSPENSO — MULTIPLAYER ATIVO');
+    }
+  } else if (SB.sup){
+    SB.sup = false;
+    if (cfg.soft.on){
+      sbEnable();
+      toast('SOFTBODY REATIVADO');
+    }
+  }
+}
+function sbDirs(n){
+  if (SB.dirs.n === n && SB.dirs.arr) return SB.dirs.arr;
+  const arr = new Float32Array(n*3);
+  const ga = Math.PI*(3 - Math.sqrt(5));
+  for (let i=0;i<n;i++){
+    const y = 1 - (i+0.5)*2/n;
+    const r = Math.sqrt(Math.max(0, 1 - y*y));
+    const th = ga*i;
+    arr[i*3] = Math.cos(th)*r; arr[i*3+1] = y; arr[i*3+2] = Math.sin(th)*r;
+  }
+  SB.dirs = { n, arr };
+  return arr;
+}
+const _sbRay = new RAPIER.Ray({x:0,y:0,z:0},{x:0,y:1,z:0});
+function sbWallUpdate(){
+  const s = cfg.soft;
+  const nd = SB.nodes, w = SB.wall;
+  for (let i=0;i<SB.nodeWall.length;i++) SB.nodeWall[i].length = 0;
+  if (!s.layers){ w.n = 0; w.hash.clear(); return; }
+  let Cx=0, Cy=0, Cz=0;
+  for (const nde of nd){ Cx+=nde.p.x; Cy+=nde.p.y; Cz+=nde.p.z; }
+  Cx/=nd.length; Cy/=nd.length; Cz/=nd.length;
+  if (![Cx,Cy,Cz].every(isF)){ w.n = 0; return; }
+  _sbC.set(Cx, Cy, Cz);
+  const n = sClamp(Math.round(s.rays), 32, 5000, 256);
+  const dirs = sbDirs(n);
+  const R = SB.maxR*1.25;
+  let wn = 0;
+  w.hash.clear();
+  for (let i=0;i<n && wn<5000;i++){
+    _sbD.set(dirs[i*3], dirs[i*3+1], dirs[i*3+2]);
+    _sbRay.origin.x=_sbC.x; _sbRay.origin.y=_sbC.y; _sbRay.origin.z=_sbC.z;
+    _sbRay.dir.x=_sbD.x; _sbRay.dir.y=_sbD.y; _sbRay.dir.z=_sbD.z;
+    let hit = null;
+    try { hit = world.castRay(_sbRay, R, true, undefined, undefined, undefined, body); } catch(e){}
+    if (hit && isF(hit.toi) && hit.toi >= 0){
+      const d = Math.min(hit.toi, R);
+      const px = _sbC.x + _sbD.x*d, py = _sbC.y + _sbD.y*d, pz = _sbC.z + _sbD.z*d;
+      let nx=0, ny=1, nz=0;
+      try {
+        const hn = hit.normal;
+        if (hn){
+          const l = Math.hypot(hn.x, hn.y, hn.z);
+          if (l > 1e-5 && isF(hn.x+hn.y+hn.z)){ nx=hn.x/l; ny=hn.y/l; nz=hn.z/l; }
+        }
+      } catch(e){}
+      const o = wn*6;
+      w.data[o]=px; w.data[o+1]=py; w.data[o+2]=pz;
+      w.data[o+3]=nx; w.data[o+4]=ny; w.data[o+5]=nz;
+      const key = sbHashKey(px/0.6, py/0.6, pz/0.6);
+      let arr = w.hash.get(key);
+      if (!arr){ arr = []; w.hash.set(key, arr); }
+      arr.push(wn);
+      wn++;
+    }
+  }
+  w.n = wn;
+  // cache: planos relevantes por nó (camadas: nós externos resolvem primeiro)
+  for (let i=0;i<nd.length;i++){
+    const nde = nd[i];
+    const cx = Math.floor(nde.p.x/0.6), cy = Math.floor(nde.p.y/0.6), cz = Math.floor(nde.p.z/0.6);
+    for (let dx=-1;dx<=1;dx++)for(let dy=-1;dy<=1;dy++)for(let dz=-1;dz<=1;dz++){
+      const arr = w.hash.get(sbHashKey(cx+dx, cy+dy, cz+dz));
+      if (!arr) continue;
+      for (const wi of arr){
+        const o = wi*6;
+        const dd = (nde.p.x-w.data[o])*w.data[o+3] + (nde.p.y-w.data[o+1])*w.data[o+4] + (nde.p.z-w.data[o+2])*w.data[o+5];
+        if (dd < SB_SKIN + 0.45) SB.nodeWall[i].push(wi);
+      }
+    }
+  }
+}
+function sbStep(h){
+  const nd = SB.nodes, beams = SB.beams, w = SB.wall, s = cfg.soft;
+  // zera forças + gravidade
+  for (const nde of nd){
+    nde.F.set(0, -nde.m*19, 0);
+  }
+  // vigas node-beam
+  for (let bi=0;bi<beams.length;bi++){
+    const b = beams[bi];
+    const A = nd[b.a], B = nd[b.b];
+    _sbA.subVectors(B.p, A.p);
+    const len = _sbA.length();
+    if (len < 1e-5) continue;
+    _sbA.divideScalar(len);
+    const rv = _sbB.subVectors(B.v, A.v).dot(_sbA);
+    let F = b.k*(len - b.rest) + b.c*rv;
+    F = sClamp(F, -20000, 20000, 0);
+    _sbC.copy(_sbA).multiplyScalar(F);
+    A.F.add(_sbC);
+    B.F.sub(_sbC);
+  }
+  // ancoragem elástica ao frame rígido + reação acumulada
+  let rX=0, rY=0, rZ=0, aCx=0, aCy=0, aCz=0, aN=0;
+  for (let i=0;i<nd.length;i++){
+    const nde = nd[i];
+    _sbA.copy(nde.a).applyQuaternion(carQ).add(carPos);  // attach world
+    _sbB.subVectors(_sbA, nde.p);
+    pointVel(_sbA, _sbD);
+    _sbE.subVectors(nde.v, _sbD);
+    let fx = _sbB.x*SB_KA - _sbE.x*SB_CA;
+    let fy = _sbB.y*SB_KA - _sbE.y*SB_CA;
+    let fz = _sbB.z*SB_KA - _sbE.z*SB_CA;
+    fx = sClamp(fx, -15000, 15000, 0);
+    fy = sClamp(fy, -15000, 15000, 0);
+    fz = sClamp(fz, -15000, 15000, 0);
+    nde.F.x += fx; nde.F.y += fy; nde.F.z += fz;
+    rX -= fx; rY -= fy; rZ -= fz;
+    aCx += _sbA.x; aCy += _sbA.y; aCz += _sbA.z; aN++;
+  }
+  // preservação de volume (anti-colapso) — pressão nas faces
+  if (s.vol){
+    const V = sbVolume(_sbC);
+    if (V > 1e-4){
+      const P = sClamp(SB_KVOL*(SB.v0/V - 1), -2500, 25000, 0);
+      if (Math.abs(P) > 1){
+        const f = SB.faceIdx;
+        for (let t=0;t<f.length;t+=3){
+          const A = nd[f[t]].p, B = nd[f[t+1]].p, C2 = nd[f[t+2]].p;
+          const e1x=B.x-A.x, e1y=B.y-A.y, e1z=B.z-A.z;
+          const e2x=C2.x-A.x, e2y=C2.y-A.y, e2z=C2.z-A.z;
+          const cx = (e1y*e2z - e1z*e2y) * (P/6);
+          const cy = (e1z*e2x - e1x*e2z) * (P/6);
+          const cz = (e1x*e2y - e1y*e2x) * (P/6);
+          const FA = nd[f[t]].F, FB = nd[f[t+1]].F, FC = nd[f[t+2]].F;
+          FA.x+=cx; FA.y+=cy; FA.z+=cz;
+          FB.x+=cx; FB.y+=cy; FB.z+=cz;
+          FC.x+=cx; FC.y+=cy; FC.z+=cz;
+        }
+      }
+    }
+  }
+  // colisão em camadas vs muro de rays (exterior→interior)
+  let cX=0, cY=0, cZ=0, cn=0, ctX=0, ctY=0, ctZ=0;
+  if (s.layers && w.n > 0){
+    for (let layer=2; layer>=0; layer--){
+      for (let i=0;i<nd.length;i++){
+        const nde = nd[i];
+        if (nde.layer !== layer) continue;
+        const list = SB.nodeWall[i];
+        for (let li=0; li<list.length; li++){
+          const o = list[li]*6;
+          const nx=w.data[o+3], ny=w.data[o+4], nz=w.data[o+5];
+          const dd = (nde.p.x-w.data[o])*nx + (nde.p.y-w.data[o+1])*ny + (nde.p.z-w.data[o+2])*nz;
+          if (dd < SB_SKIN){
+            const pen = SB_SKIN - dd;
+            const vn = nde.v.x*nx + nde.v.y*ny + nde.v.z*nz;
+            let fm = pen*SB_KCON - Math.min(vn,0)*SB_CCON;
+            fm = sClamp(fm, -8000, 25000, 0);
+            const fx=nx*fm, fy=ny*fm, fz=nz*fm;
+            nde.F.x += fx; nde.F.y += fy; nde.F.z += fz;
+            ctX += fx; ctY += fy; ctZ += fz;
+            cX += nde.p.x; cY += nde.p.y; cZ += nde.p.z; cn++;
+          }
+        }
+      }
+    }
+  }
+  // self-collision (pares não conectados por viga)
+  if (s.selfcol){
+    for (let i=0;i<nd.length;i++){
+      const A = nd[i];
+      for (let j=i+1;j<nd.length;j++){
+        if (SB.conn.has(i*1000+j)) continue;
+        const B = nd[j];
+        const dx=B.p.x-A.p.x, dy=B.p.y-A.p.y, dz=B.p.z-A.p.z;
+        const d2 = dx*dx+dy*dy+dz*dz;
+        if (d2 < SB_DMIN*SB_DMIN && d2 > 1e-8){
+          const d = Math.sqrt(d2);
+          const f = sClamp(SB_KSEP*(SB_DMIN-d), 0, 6000, 0) / d;
+          const fx=dx*f, fy=dy*f, fz=dz*f;
+          A.F.x-=fx; A.F.y-=fy; A.F.z-=fz;
+          B.F.x+=fx; B.F.y+=fy; B.F.z+=fz;
+        }
+      }
+    }
+  }
+  // resolução contínua: segmento pos→pos+v·h contra planos (preditivo)
+  if (s.ccd && w.n > 0){
+    for (let i=0;i<nd.length;i++){
+      const nde = nd[i];
+      const list = SB.nodeWall[i];
+      for (let li=0; li<list.length; li++){
+        const o = list[li]*6;
+        const nx=w.data[o+3], ny=w.data[o+4], nz=w.data[o+5];
+        const d0 = (nde.p.x-w.data[o])*nx + (nde.p.y-w.data[o+1])*ny + (nde.p.z-w.data[o+2])*nz;
+        if (d0 <= SB_SKIN) continue;
+        const ex = nde.p.x + nde.v.x*h, ey = nde.p.y + nde.v.y*h, ez = nde.p.z + nde.v.z*h;
+        const d1 = (ex-w.data[o])*nx + (ey-w.data[o+1])*ny + (ez-w.data[o+2])*nz;
+        if (d1 < SB_SKIN && d0 > d1){
+          const t = (d0 - SB_SKIN)/(d0 - d1);
+          nde.p.x += nde.v.x*h*t; nde.p.y += nde.v.y*h*t; nde.p.z += nde.v.z*h*t;
+          const vn = nde.v.x*nx + nde.v.y*ny + nde.v.z*nz;
+          if (vn < 0){ nde.v.x -= nx*vn; nde.v.y -= ny*vn; nde.v.z -= nz*vn; }
+        }
+      }
+    }
+  }
+  // integração semi-implícita
+  for (const nde of nd){
+    nde.v.x += nde.F.x/nde.m*h;
+    nde.v.y += nde.F.y/nde.m*h;
+    nde.v.z += nde.F.z/nde.m*h;
+    const sp = nde.v.length();
+    if (sp > SB_VMAX) nde.v.multiplyScalar(SB_VMAX/sp);
+    nde.p.x += nde.v.x*h; nde.p.y += nde.v.y*h; nde.p.z += nde.v.z*h;
+  }
+  // transmissão ao corpo rígido (reação da ancoragem + contatos)
+  if (aN > 0 && (rX || rY || rZ)){
+    _sbG.set(rX, rY, rZ).multiplyScalar(h);
+    _sbC.set(aCx/aN, aCy/aN, aCz/aN);
+    safeImpulseAtPoint(_sbG, _sbC);
+  }
+  if (cn > 0 && (ctX || ctY || ctZ)){
+    _sbG.set(ctX, ctY, ctZ).multiplyScalar(h);
+    _sbC.set(cX/cn, cY/cn, cZ/cn);
+    safeImpulseAtPoint(_sbG, _sbC);
+  }
+}
+function softUpdate(dt){
+  const active = cfg.soft.on && !net && !SB.sup;
+  if (SB.on !== active){
+    if (active) sbEnable(); else sbDisable();
+  }
+  if (!SB.on || dt <= 0) return;
+  // muro de colisão a ≤120 Hz (independente da taxa de integração)
+  SB.wall.acc += dt;
+  if (SB.wall.acc >= 1/120){ SB.wall.acc = 0; sbWallUpdate(); }
+  // integração na taxa digitada (cap honesto de 10 substeps/frame)
+  const hz = sClamp(Math.round(cfg.soft.hz), 50, 10000, 240);
+  const h = 1/hz;
+  SB.acc += dt;
+  let steps = 0;
+  while (SB.acc >= h && steps < 10){ sbStep(h); SB.acc -= h; steps++; }
+  if (steps === 10) SB.acc = 0;
+  SB.effHz += (steps/Math.max(dt, 1e-3) - SB.effHz)*0.1;
+  // NaN guard do softbody
+  for (const nde of SB.nodes){
+    if (!isF(nde.p.x + nde.p.y + nde.p.z)){
+      sbReset();
+      if (!SB.warned){ toast('SOFTBODY RESETADO (estado inválido)'); SB.warned = true; }
+      break;
+    }
+  }
+}
+function sbVisual(){
+  if (!SB.on || !SB.posAttr) return;
+  const f = SB.faceIdx, arr = SB.posAttr.array, nd = SB.nodes;
+  for (let t=0;t<f.length;t++){
+    const p = nd[f[t]].p;
+    arr[t*3] = p.x; arr[t*3+1] = p.y; arr[t*3+2] = p.z;
+  }
+  SB.posAttr.needsUpdate = true;
+  SB.mesh.geometry.computeVertexNormals();
+}
 
 /* ============================================================
    [11] TOAST / ENTRADA / MENU / EDITOR
@@ -1772,6 +2257,7 @@ function resetCar(){
   setCarPose(0, spawnY(0,0), worldMode==='mp' ? -24 : 0, 0,0,0,1);
   steerState = 0;
   camPos.set(0, 3.4, worldMode==='mp' ? -33 : -9);
+  if (SB.on) sbReset();
 }
 let nanResets = 0;
 function hardResetCar(){
@@ -1779,6 +2265,7 @@ function hardResetCar(){
   steerState = 0;
   for (const w of wheels){ w.macFeed=0; w.x3fFeed=0; w.lowCmd=0; w.distVSm=0.70; w.distV=0.70; w.comp=0; w.load=0; w.spinVel=0; }
   camPos.set(0, 3.4, worldMode==='mp' ? -33 : -9);
+  if (SB.on) sbReset();
   nanResets++;
   toast('ESTADO FÍSICO INVÁLIDO — CARRO REPOSICIONADO');
 }
@@ -1865,6 +2352,9 @@ function restoreDefaultCar(){
   for (const p of carParts) createPartMesh(p);
   deselectPart();
   rebuildCarPhysics(); saveCar();
+  if (SB.on){
+    for (const p of carParts) p.mesh.visible = false;
+  }
   updateEditorUI();
 }
 let downX = 0, downY = 0;
@@ -1985,7 +2475,7 @@ function renderPublicServers(){
   if (!rows.length){
     const d = document.createElement('div');
     d.className = 'm-note';
-    d.textContent = 'nenhum servidor público visível — abra outra aba/janela, crie um servidor PÚBLICO e ele aparece aqui';
+    d.textContent = 'nenhum servidor público visível — crie um PÚBLICO em outra aba/janela';
     el.appendChild(d);
     return;
   }
@@ -2008,6 +2498,14 @@ function netStatusText(){
   return who + ' "' + net.code + '" · ' + (net.priv ? 'privado' : 'público') +
     ' · ' + (net.peers.size + 1) + ' piloto(s) · mapa MP';
 }
+function sbStatsLine(){
+  if (!SB.built) return 'softbody desligado · ative para construir o lattice node-beam';
+  const hz = sClamp(Math.round(cfg.soft.hz), 50, 10000, 240);
+  const warn = cfg.soft.rays > 1500 ? ' · <b style="color:var(--hot)">custo alto</b>' : '';
+  return `<b>${SB.nodes.length}</b> nós · <b>${SB.beams.length}</b> vigas · <b>${SB.faceIdx.length/3}</b> tris · ` +
+    `muro <b>${cfg.soft.layers ? sClamp(Math.round(cfg.soft.rays),32,5000,256) : 0}</b> rays @≤120Hz${warn}<br>` +
+    `integração alvo <b>${hz} Hz</b> · efetiva <b>${SB.on ? Math.round(SB.effHz) : '—'} Hz</b> (cap 10 substeps/frame)`;
+}
 function updateMenuUI(){
   const $ = id => document.getElementById(id);
   document.querySelectorAll('.pbtn[data-preset]').forEach(b=>
@@ -2019,6 +2517,19 @@ function updateMenuUI(){
   $('up-pix').checked = up.pix;
   const s = effScale();
   $('up-res').innerHTML = `interno: <b>${Math.round(innerWidth*s)}×${Math.round(innerHeight*s)}px</b> → tela ${innerWidth}×${innerHeight}`;
+  // softbody
+  $('sb-on').checked = cfg.soft.on;
+  $('sb-model').value = 'nodebeam';
+  $('sb-vol').checked = cfg.soft.vol;
+  $('sb-layers').checked = cfg.soft.layers;
+  $('sb-rays').value = cfg.soft.rays;
+  $('sb-raysv').textContent = cfg.soft.rays;
+  $('sb-self').checked = cfg.soft.selfcol;
+  $('sb-ccd').checked = cfg.soft.ccd;
+  $('sb-hz').value = cfg.soft.hz;
+  $('sb-hzv').textContent = cfg.soft.hz + ' Hz';
+  $('sb-stats').innerHTML = sbStatsLine();
+  // resto
   $('m-name').value = cfg.name;
   $('m-priv').classList.toggle('on', hostPriv);
   $('m-pub').classList.toggle('on', !hostPriv);
@@ -2054,7 +2565,7 @@ function updateMenuStats(){
     `FPS <b>${fpsEMA|0}</b> · DRAWS <b>${lastCalls}</b> · TRIS <b>${fmtK(lastTris)}</b><br>` +
     `VISÍVEIS <b>${statV}/${cullables.length}</b> · FRUSTUM <b>${statF}</b> · OCLUSÃO <b>${statO}</b> · CACHE <b>${cacheHits}</b><br>` +
     `RESOLUÇÃO <b>${rw}×${rh}</b> → ${innerWidth}×${innerHeight} (${Math.round(effScale()*100)}%)<br>` +
-    `RESYNCS FÍSICOS <b>${nanResets}</b> · MUNDO <b>${worldMode.toUpperCase()}</b> · CCD <b>ON</b>`;
+    `RESYNCS <b>${nanResets}</b> · MUNDO <b>${worldMode.toUpperCase()}</b> · CCD <b>ON</b> · SOFTBODY <b>${SB.on?'ON':'OFF'}</b>`;
 }
 function bindMenuUI(){
   const $ = id => document.getElementById(id);
@@ -2084,7 +2595,30 @@ function bindMenuUI(){
     netJoin(code);
   });
   $('m-leave').addEventListener('click', ()=>netLeave(false));
-  // procedural — bloqueado enquanto num servidor (mapa MP é fixo)
+  // experimental softbody
+  $('sb-on').addEventListener('change', e=>{
+    if (e.target.checked && net){
+      e.target.checked = false;
+      toast('SOFTBODY NÃO FUNCIONA EM MULTIPLAYER — SAIA DO SERVIDOR');
+      return;
+    }
+    cfg.soft.on = e.target.checked; saveCfg(); updateMenuUI();
+  });
+  $('sb-vol').addEventListener('change', e=>{ cfg.soft.vol = e.target.checked; saveCfg(); updateMenuUI(); });
+  $('sb-layers').addEventListener('change', e=>{ cfg.soft.layers = e.target.checked; saveCfg(); updateMenuUI(); });
+  $('sb-self').addEventListener('change', e=>{ cfg.soft.selfcol = e.target.checked; saveCfg(); updateMenuUI(); });
+  $('sb-ccd').addEventListener('change', e=>{ cfg.soft.ccd = e.target.checked; saveCfg(); updateMenuUI(); });
+  $('sb-rays').addEventListener('change', e=>{
+    cfg.soft.rays = sClamp(Math.round(+e.target.value), 32, 5000, 256);
+    e.target.value = cfg.soft.rays;
+    saveCfg(); updateMenuUI();
+  });
+  $('sb-hz').addEventListener('change', e=>{
+    cfg.soft.hz = sClamp(Math.round(+e.target.value), 50, 10000, 240);
+    e.target.value = cfg.soft.hz;
+    saveCfg(); updateMenuUI();
+  });
+  // procedural
   $('m-proc').addEventListener('change', e=>{
     if (net){ e.target.checked = (worldMode==='proc'); toast('SAIA DO SERVIDOR PARA TROCAR DE MUNDO'); return; }
     if (e.target.checked) applyProcWorld(($('m-seed').value || 'x3f-6').slice(0,32).trim() || 'x3f-6');
@@ -2181,7 +2715,7 @@ addEventListener('pointermove', e=>{
 addEventListener('wheel', e=>{ camDist = sClamp(camDist+e.deltaY*0.008, 4.5, 15, 8.2); });
 
 /* ============================================================
-   [12] PERSISTÊNCIA — tag de mundo (f / p:seed / mp)
+   [12] PERSISTÊNCIA
 ============================================================ */
 let odo = 0, lastSave = 0;
 function saveState(){
@@ -2583,7 +3117,6 @@ function updateVisuals(dt){
     }
     lookGeo.attributes.position.needsUpdate = true;
   }
-  // bolhas de chat seguem o carro do dono
   const now = nowS();
   for (let i = bubbles.length-1; i >= 0; i--){
     const b = bubbles[i];
@@ -2669,6 +3202,7 @@ function updateHUD(dt){
     }
     if (menuOpen){
       updateMenuStats(); updateMemUI();
+      document.getElementById('sb-stats').innerHTML = sbStatsLine();
       mpTick++;
       if (mpTick >= 4){
         mpTick = 0;
@@ -2719,7 +3253,9 @@ function frame(){
 
   netUpdate(dt);
   syncBody();
+  softUpdate(dt);            // integração do softbody na taxa configurada
   updateVisuals(dt);
+  sbVisual();                // malha deformável da casca
   updateCamera(dt);
   cullPass(now);
   renderer.render(scene, camera);
