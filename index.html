@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WB-6 — Chassi Raycast · X3F/Mac Restaurados + Sphere Cast como Colisão</title>
+<title>WB-6 — Chassi Raycast · X3F Preditivo Real</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
@@ -41,7 +41,7 @@
 
   #toast{position:fixed;top:18px;left:50%;transform:translateX(-50%);z-index:55;
     background:var(--panel);border:1px solid var(--accent);color:var(--accent);
-    font-size:10px;letter-spacing:.12em;padding:8px 14px;opacity:0;transition:opacity .3s;
+    font-size:10px;letter-spacing:.12em;padding:8px 14px;emissive:none;
     pointer-events:none;white-space:nowrap;max-width:90vw;overflow:hidden;text-overflow:ellipsis}
   #toast.show{opacity:1}
 
@@ -178,10 +178,9 @@
 
 <div id="boot">
   <div class="boot-title">WB<b>—</b>6</div>
-  <div class="boot-sub">X3F/MAC DISTINTOS · SPHERE CAST = COLISÃO</div>
+  <div class="boot-sub">SENSORES ANCORADOS · X3F PREDITIVO REAL</div>
   <div class="boot-bar"></div>
   <div id="boot-msg">iniciando…</div>
-  < Orthogonalizado
   <div id="boot-detail"></div>
   <div id="boot-btns">
     <button class="bbtn" id="boot-retry">TENTAR DE NOVO</button>
@@ -270,6 +269,7 @@
         <button type="button" class="pbtn" data-preset="potato">POTATO</button>
         <button type="button" class="pbtn" data-preset="baixo">BAIXO</button>
         <button type="button" class="pbtn" data-preset="medio">MÉDIO</button>
+        <button type="button" class="pbtn" data-preset="bull" disabled>—</button>
         <button type="button" class="pbtn" data-preset="alto">ALTO</button>
       </div>
       <div id="m-pdesc" class="m-note" style="margin-top:7px"></div>
@@ -312,11 +312,11 @@
       <div id="m-colnote" class="m-note"></div>
       <div class="row-line"><span>oclusão por raycast <span class="dim">(desligue se algo sumir)</span></span>
         <label class="sw"><input type="checkbox" id="m-occ"><i></i></label></div>
-      <div class="m-note">o modo de colisão vale para TODAS as suspensões — troca apenas como o chão é medido, nunca a mecânica (braços/mola/ativação). X3F = preditiva ativa · MacPherson = strut inclinado semi-ativo.</div>
     </div>
 
     <div class="m-sec">
       <div class="m-label">ÁUDIO — ENGINE.WAV</div>
+      <div-predict></div-predict>
       <div class="row-line"><span>som do motor</span>
         <label class="sw"><input type="checkbox" id="m-snd"><i></i></label></div>
       <div class="row-line"><span>volume <b id="m-volp">70%</b></span>
@@ -381,9 +381,12 @@
       </div>
 
       <div class="m-label" style="margin-top:10px">ROTAÇÃO — PASSOS DE 15°</div>
-      <div class="e-axis"><span class="ax">X</span><button class="ebtn" data-rot="0" data-d="-1">−</button>
+      <div class="e-axis"><span class="ax">X</span><button class="ebtn" data-rot="0" data-d="-1">−15°</button>
         <span class="val" id="e-r0">0°</span><button class="ebtn" data-rot="0" data-d="1">+15°</button></div>
-      <div class="e-axis"><span class="ax">Y</span><button class="ebtn" cast="0" data-d="1">+15°</button></div>
+      <div class="e-axis"><span class="ax">Y</span><button class="ebtn" data-rot="1" data-d="-1">−</button>
+        <span class="val" id="e-r1">0°</span><button class="ebtn" data-rot="1" data-d="1">+15°</button></div>
+      <div class="e-axis"><span class="ax">Z</span><button class="ebtn" data-rot="2" data-d="-1">−</button>
+        <span class="val" id="e-r2">0°</span><button class="ebtn" data-rot="2" data-d="1">+15°</button></div>
     </div>
 
     <div class="m-sec">
@@ -391,9 +394,9 @@
       <select class="e-select" id="e-susp">
         <option value="double">DOUBLE WISHBONE</option>
         <option value="single">SINGLE WISHBONE</option>
-        <option value="mac">MACPHERSON — strut inclinado semi-ativo</option>
+        <option value="mac">MACPHERSON — strut semi-ativo</option>
         <option value="leaf">LEAF SPRING</option>
-        <option value="x3f">X3F SPRING — preditiva ativa (nivela sozinha)</option>
+        <option value="x3f">X3F SPRING — preditiva real (sente → prepara)</option>
         <option value="lowrider">LOW RIDER — hidráulica por teclas</option>
       </select>
       <div id="e-x3f" style="display:none">
@@ -405,13 +408,13 @@
             <option value="single">SINGLE WISHBONE</option>
           </select></div>
 
-        <div class="m-label" style="margin-top:8px">EDITOR DE SENSORES — SENSOR (sente) · CÂMERA (vê e prevê)</div>
+        <div class="m-label" style="margin-top:8px">EDITOR DE SENSORES — SENSOR (para baixo) · CÂMERA (frente-baixo)</div>
         <div class="e-btnrow">
           <button class="pbtn" id="e-x3f-adds">+ SENSOR</button>
           <button class="pbtn" id="e-x3f-addc">+ CÂMERA</button>
           <button class="mbtn" id="e-x3f-clear">LIMPAR</button>
         </div>
-        <div class="m-note">modo de fábrica (sem nós): 4 sondas à frente pela trajetória + alturas sob as rodas → carro reto em barrancos. nós adicionados refinam o plano.</div>
+        <div class="m-note">pods ancorados ao chassi (seguem o carro). a detecção NÃO levanta o carro — o X3F mede o obstáculo à frente e endurece o amortecedor para reagir no contato, como um carro real.</div>
         <div id="e-x3fedit" class="dis" style="display:none">
           <div class="row-line"><span id="e-x3fname">—</span>
             <button class="mbtn warn" id="e-x3f-del" disabled>DELETAR</button></div>
@@ -1257,7 +1260,7 @@ for (const sx of [1,-1]) for (const z of [1.20,-1.10]){
 regDyn(chassis, new THREE.Vector3(0,0.3,0), 2.4);
 
 /* ============================================================
-   [7] RODAS + SUSPENSÕES VISUAIS (sphere cast NÃO muda nada aqui)
+   [7] RODAS + SUSPENSÕES VISUAIS
 ============================================================ */
 const cylGeo = new THREE.CylinderGeometry(1,1,1,10);
 const bjGeo = new THREE.SphereGeometry(0.055,12,10);
@@ -1324,7 +1327,7 @@ function buildWheel(x, z, front, sx){
     x, z, front, sx, hardLocal:new THREE.Vector3(x,CFG.hardY,z),
     steer:0, spin:0, spinVel:0, comp:0, load:0, len:CFG.rest, hits:0, grounded:false,
     normal:new THREE.Vector3(0,1,0), groundY:NaN,
-    macFeed:0, x3fFeed:0, lowCmd:0,
+    macFeed:0, x3fDamper:1.0, x3fPre:0, lowCmd:0,
     prevPairComp:0, pair:null, idx:0,
     rayDbg:[], v:{ type:'double' }, frame, steerG, spinG, susG
   };
@@ -1404,14 +1407,6 @@ function rebuildX3FPods(){
     chassis.add(g);
     x3fMeshes.push(g);
   }
-}
-function x3fDefaultNodes(){
-  const arr = [
-    { t:'sensor', p:[0.45,-0.15,1.85] },
-    { t:'sensor', p:[-0.45,-0.15,1.85] }
-  ];
-  for (const w of wheels) arr.push({ t:'sensor', p:[w.x,-0.10,w.z+0.55] });
-  return arr;
 }
 function x3fActiveNodes(){
   return x3fNodes.length ? x3fNodes : [];
@@ -1513,7 +1508,7 @@ function getEngineBuffer(){
     } catch(e){
       const ab = buildEngineWav();
       wavNote = `engine.wav sintetizado · PCM16 · 22 050 Hz · loop 1,0 s · <b>${ab.byteLength} bytes</b>`;
-      return await AC.decodeAudioData(ab);
+      return await AC.decodeAudioData(ac); /* não usado */
     }
   })();
   return engineBufPromise;
@@ -1611,7 +1606,7 @@ function makeRemote(name){
     const spinG = new THREE.Group(); sg.add(spinG);
     const wm = new THREE.Mesh(tireGeo, tireMat); wm.rotation.z = Math.PI/2; wm.castShadow = true; spinG.add(wm);
     const armA = new THREE.Mesh(cylGeo, armMat); armA.castShadow = true; g.add(armA);
-    const armB = new THREE.Mesh(cylGeo, armMat); armB.castShadow = true; g.add(armA);
+    const armB = new THREE.Mesh(cylGeo, armMat); armB.castShadow = true; g.add(armB);
     const springG = new THREE.Group(); g.add(springG);
     const spring = new THREE.Mesh(springGeo, springMat); springG.add(spring);
     rwheels.push({
@@ -1694,7 +1689,7 @@ function onNetMsg(e){
     p.name = sanitizeName(m.n) || p.name;
     p.tx = P[0]; p.ty = P[1]; p.tz = P[2];
     const ql = Math.hypot(Q[0],Q[1],Q[2],Q[3]);
-    if (ql > 0.2 && ql < 5){ p.tq.set(Q[0],Q[1],Q[2],Q[3]).normalize(); p.tqv = true; }
+    if (ql > 0.02 && ql < 5){ p.tq.set(Q[0],Q[1],Q[2],Q[3]).normalize(); p.tqv = true; }
     p.seen = nowS();
   } else if (m.t === 'chat'){
     const name = sanitizeName(m.n);
@@ -1969,7 +1964,7 @@ function hardResetCar(){
   setCarPose(0, spawnY(0,0), worldMode==='mp' ? -24 : 0, 0,0,0,1);
   steerState = 0;
   for (const w of wheels){
-    w.macFeed=0; w.x3fFeed=0; w.lowCmd=0; w.groundY=NaN;
+    w.macFeed=0; w.x3fDamper=1.0; w.x3fPre=0; w.lowCmd=0; w.groundY=NaN;
     w.comp=0; w.load=0; w.spinVel=0; w.prevPairComp=0;
   }
   camPos.set(0, 3.4, worldMode==='mp' ? -33 : -9);
@@ -2303,8 +2298,8 @@ function updateMenuUI(){
   $('m-rays-n').textContent = RAY_OFFSETS.length;
   $('m-colmode').value = cfg.colMode;
   $('m-colnote').innerHTML = cfg.colMode==='sphere'
-    ? '<b>SPHERE CAST:</b> 3 esferas (raio 85% do pneu) por roda — média natural do terreno, suaviza bordas e degraus.'
-    : '<b>RAYCASTING:</b> N raios finos por roda — precisão ponto a ponto, contornos nítidos.';
+    ? '<b>SPHERE CAST:</b> 3 esferas (raio 85% do pneu) por roda — média natural do terreno.'
+    : '<b>RAYCASTING:</b> N raios finos por roda — precisão ponto a ponto.';
   $('m-occ').checked = occOn;
   $('m-snd').checked = cfg.snd;
   $('m-vol').value = cfg.vol;
@@ -2529,7 +2524,7 @@ document.addEventListener('visibilitychange', ()=>{
 });
 
 /* ============================================================
-   [13] FÍSICA — modos de colisão (ray/sphere) + X3F e MAC distintos
+   [13] FÍSICA — X3F PREDITIVO REAL (damping, não altura)
 ============================================================ */
 const carQ = new THREE.Quaternion();
 const carUp = new THREE.Vector3(), carFwd = new THREE.Vector3(), carRight = new THREE.Vector3();
@@ -2572,13 +2567,12 @@ function safeImpulseAtPoint(imp, pt){
     body.applyImpulseAtPoint(imp, pt, true);
 }
 
-/* ---- MODES DE COLISÃO DAS RODAS (ortogonais à suspensão) ---- */
+/* ---- modos de colisão (ray / sphere) ---- */
 const SPH_R = CFG.wheelR*0.85;
 let _ballShape = null;
 try { _ballShape = new RAPIER.Ball(SPH_R); } catch(e){ _ballShape = null; }
 const _spPos = {x:0,y:0,z:0}, _spRot = {x:0,y:0,z:0,w:1}, _spVel = {x:0,y:0,z:0};
 function groundProbe(ox, oy, oz, dwn, maxD){
-  // devolve {depth, nx,ny,nz} — depth = do ponto de origem até o CONTATO
   if (cfg.colMode==='sphere'){
     if (_ballShape && typeof world.castShape === 'function'){
       _spPos.x=ox; _spPos.y=oy; _spPos.z=oz;
@@ -2606,16 +2600,14 @@ function groundProbe(ox, oy, oz, dwn, maxD){
       }
       return null;
     }
-    // fallback: raio + compensação de raio
     _ray.origin.x=ox; _ray.origin.y=oy; _ray.origin.z=oz;
     _ray.dir.x=dwn.x; _ray.dir.y=dwn.y; _ray.dir.z=dwn.z;
     let hit = null;
     try { hit = world.castRay(_ray, maxD + SPH_R, true, undefined, undefined, undefined, body); } catch(e){}
     if (hit && isF(hit.toi) && hit.toi >= 0)
-      return { depth:Math.max(hit.toi - SPH_R, 0.01) + SPH_R, nx:0, ny:1, nz:0 };
+      return { depth:hit.toi, nx:0, ny:1, nz:0 };
     return null;
   }
-  // modo raycasting
   _ray.origin.x=ox; _ray.origin.y=oy; _ray.origin.z=oz;
   _ray.dir.x=dwn.x; _ray.dir.y=dwn.y; _ray.dir.z=dwn.z;
   let hit = null;
@@ -2676,11 +2668,12 @@ function suspension(w, dt){
     w.normal.copy(_nAcc);
     pointVel(_hp, _pv);
     const vComp = _pv.dot(_down);
+    // X3F: pré-compressão MÍNIMA (só assenta o pneu) + DAMPING preditivo
     let feed = 0;
     if (suspType==='mac') feed = w.macFeed;
-    else if (suspType==='x3f') feed = w.x3fFeed;
+    else if (suspType==='x3f') feed = w.x3fPre;
     else if (suspType==='lowrider') feed = w.lowCmd * 0.38;
-    let F = CFG.k*sp.k*massF*(comp + feed) + CFG.c*sp.c*massF*vComp;
+    let F = CFG.k*sp.k*massF*(comp + feed) + CFG.c*sp.c*w.x3fDamper*massF*vComp;
     F = sClamp(F, -CFG.maxPull*massF, CFG.maxPush*massF, 0);
     if (raw > compLim){
       const over = raw - compLim;
@@ -2735,10 +2728,7 @@ function tireForces(w, dt, sp){
 const _lo = new THREE.Vector3(), _ld = new THREE.Vector3(), _vd = new THREE.Vector3();
 const lookDbg = wheels.map(()=>({ ox:0, oy:0, oz:0, ex:0, ey:0, ez:0, hit:false }));
 
-/* ---- MACPHERSON — strut inclinado, semi-ativo (só ele) ----
-   Um único look-ahead por RODA (strut na inclinação real do
-   amortecedor, ~25° do vertical), K baixo, só na frente+trás
-   da própria roda. Sem planos globais, sem autoridade total. */
+/* ---- MACPHERSON — strut semi-ativo (look-ahead próprio) ---- */
 function macUpdate(dt){
   for (let i=0;i<4;i++){
     const w = wheels[i];
@@ -2752,9 +2742,7 @@ function macUpdate(dt){
         groundNow = _hp.y - dMean;
       }
     }
-    // strut inclinado: origem no topo da torre, raio para frente-baixo
-    _lo.copy(w.v && w.v.top ? w.v.top : w.hardLocal)
-       .applyQuaternion(carQ).add(carPos).addScaledVector(carUp, 0.2);
+    _lo.copy(w.hardLocal).applyQuaternion(carQ).add(carPos).addScaledVector(carUp, 0.6);
     _ld.copy(carFwd).multiplyScalar(0.45).addScaledVector(carUp, -1).normalize();
     _ray.origin.x=_lo.x; _ray.origin.y=_lo.y; _ray.origin.z=_lo.z;
     _ray.dir.x=_ld.x; _ray.dir.y=_ld.y; _ray.dir.z=_ld.z;
@@ -2778,51 +2766,17 @@ function macUpdate(dt){
   }
 }
 
-/* ---- X3F — PREDITIVA ATIVA (só ela) ----
-   4 sondas à frente pela TRAJETÓRIA + alturas sob as rodas +
-   nós opcionais; plano global; autoridade total do curso. */
+/* ---- X3F PREDITIVO REAL ----
+   Sensor/câmera à frente mede o OBSTÁCULO (altura que a roda
+   vai enfrentar). Resposta = DAMPING (amortecedor endurece) +
+   pré-compressão mínima (assenta o pneu). O carro sobe sobre
+   o obstáculo de verdade, mas PREPARADO — como na vida real.
+   Por roda: a sonda à frente da TRAJETÓRIA daquela roda. */
 let x3fAcc = 0;
 function x3fUpdate(dt){
-  const g = [NaN,NaN,NaN,NaN];
-  for (let i=0;i<4;i++){
-    if (isF(wheels[i].groundY)) g[i] = wheels[i].groundY;
-  }
-  let ps=0, pn=0;
-  for (const v of g) if (isF(v)){ ps+=v; pn++; }
-  let plane = pn ? ps/pn : NaN;
-
-  // nós do editor refinam o plano
-  let nSum=0, nCnt=0;
-  for (const n of x3fActiveNodes()){
-    if (!n.dbg) n.dbg = { d:3.0, hit:false };
-    _o.set(n.p[0], n.p[1], n.p[2]).applyQuaternion(carQ).add(carPos);
-    _ray.origin.x=_o.x; _ray.origin.y=_o.y; _ray.origin.z=_o.z;
-    let hit = null;
-    if (n.t === 'cam'){
-      _ld.copy(carFwd).multiplyScalar(0.85).addScaledVector(carUp, -1).normalize();
-      _ray.dir.x=_ld.x; _ray.dir.y=_ld.y; _ray.dir.z=_ld.z;
-      try { hit = world.castRay(_ray, 3.2, true, undefined, undefined, undefined, body); } catch(e){}
-      if (hit && isF(hit.toi) && hit.toi >= 0){
-        n.dbg.d = Math.max(hit.toi, 0.05); n.dbg.hit = true;
-        const gn = _o.y + _ld.y*n.dbg.d;
-        if (isF(gn)){ nSum += gn; nCnt++; }
-      } else { n.dbg.hit = false; n.dbg.d = 3.2; }
-    } else {
-      _ray.dir.x=-carUp.x; _ray.dir.y=-carUp.y; _ray.dir.z=-carUp.z;
-      try { hit = world.castRay(_ray, 3.2, true, undefined, undefined, undefined, body); } catch(e){}
-      if (hit && isF(hit.toi) && hit.toi >= 0){
-        n.dbg.d = Math.max(hit.toi, 0.02); n.dbg.hit = true;
-        const gn = _o.y - carUp.y*n.dbg.d;
-        if (isF(gn)){ nSum += gn; nCnt++; }
-      } else { n.dbg.hit = false; n.dbg.d = 3.2; }
-    }
-  }
-  if (nCnt >= 2 && isF(plane)) plane = plane*0.65 + (nSum/nCnt)*0.35;
-  else if (nCnt >= 2) plane = nSum/nCnt;
-
-  // sondas à frente pela trajetória real
+  // direção da trajetória
   const speed = linV.length();
-  const dist = sClamp(speed*0.30, 1.0, 4.0);
+  const dist = sClamp(speed*0.28, 0.9, 3.5);
   if (speed > 0.6){
     _vd.copy(linV);
     _vd.addScaledVector(carUp, -_vd.dot(carUp));
@@ -2831,43 +2785,75 @@ function x3fUpdate(dt){
   } else {
     _vd.copy(carFwd);
   }
-  const a = [NaN,NaN,NaN,NaN];
   for (let i=0;i<4;i++){
     const w = wheels[i];
+    // altura atual do solo sob a roda (referência)
+    let gNow = NaN;
+    if (isF(w.groundY)) gNow = w.groundY;
+    // sonda: acima da posição FUTURA da roda, olhando para baixo
     _hp.copy(w.hardLocal).applyQuaternion(carQ).add(carPos);
-    _lo.copy(_hp).addScaledVector(_vd, dist).addScaledVector(carUp, 1.0);
+    _lo.copy(_hp).addScaledVector(_vd, dist).addScaledVector(carUp, 1.2);
     _ray.origin.x=_lo.x; _ray.origin.y=_lo.y; _ray.origin.z=_lo.z;
     _ray.dir.x=-carUp.x; _ray.dir.y=-carUp.y; _ray.dir.z=-carUp.z;
     let hit = null;
     try { hit = world.castRay(_ray, 6.0, true, undefined, undefined, undefined, body); } catch(e){}
+    let gAhead = NaN;
     if (hit && isF(hit.toi) && hit.toi >= 0){
-      a[i] = _lo.y - Math.max(hit.toi, 0.02);
+      gAhead = _lo.y - Math.max(hit.toi, 0.02);
     }
     const dbg = lookDbg[i];
     const endD = (hit && isF(hit.toi)) ? Math.max(hit.toi, 0.05) : 6.0;
     dbg.ox=_lo.x; dbg.oy=_lo.y; dbg.oz=_lo.z;
     dbg.ex=_lo.x-carUp.x*endD; dbg.ey=_lo.y-carUp.y*endD; dbg.ez=_lo.z-carUp.z*endD;
     dbg.hit = !!(hit && isF(hit.toi));
-  }
-  let as=0, an=0;
-  for (const v of a) if (isF(v)){ as+=v; an++; }
-  const aheadCM = an ? as/an : 0;
-
-  for (let i=0;i<4;i++){
-    const w = wheels[i];
-    let target = 0;
-    if (isF(plane) && isF(g[i])){
-      target = 1.00*(plane - g[i]);                      // nivelar: autoridade total
-      if (isF(a[i]) && an > 0){
-        target += 0.60*((plane - a[i]) - (plane - aheadCM));
+    // nós do editor: refinam a leitura (média com os pods)
+    let podsSum = 0, podsCnt = 0;
+    for (const n of x3fActiveNodes()){
+      if (!n.dbg) n.dbg = { d:3.0, hit:false };
+      // pods do lado da roda (mesma sx) pesam mais
+      _o.set(n.p[0], n.p[1], n.p[2]).applyQuaternion(carQ).add(carPos);
+      _ray.origin.x=_o.x; _ray.origin.y=_o.y; _ray.origin.z=_o.z;
+      if (n.t === 'cam'){
+        _ld.copy(carFwd).multiplyScalar(0.85).addScaledVector(carUp, -1).normalize();
+        _ray.dir.x=_ld.x; _ray.dir.y=_ld.y; _ray.dir.z=_ld.z;
+        let h2 = null;
+        try { h2 = world.castRay(_ray, 3.2, true, undefined, undefined, undefined, body); } catch(e){}
+        if (h2 && isF(h2.toi) && h2.toi >= 0){
+          n.dbg.d = Math.max(h2.toi, 0.05); n.dbg.hit = true;
+          const gn = _o.y + _ld.y*n.dbg.d;
+          if (isF(gn)){ podsSum += gn; podsCnt++; }
+        } else { n.dbg.hit = false; n.dbg.d = 3.2; }
+      } else {
+        _ray.dir.x=-carUp.x; _ray.dir.y=-carUp.y; _ray.dir.z=-carUp.z;
+        let h2 = null;
+        try { h2 = world.castRay(_ray, 3.2, true, undefined, undefined, undefined, body); } catch(e){}
+        if (h2 && isF(h2.toi) && h2.toi >= 0){
+          n.dbg.d = Math.max(h2.toi, 0.02); n.dbg.hit = true;
+          const gn = _o.y - carUp.y*n.dbg.d;
+          if (isF(gn)){ podsSum += gn; podsCnt++; }
+        } else { n.dbg.hit = false; n.dbg.d = 3.2; }
       }
     }
-    const tgt = sClamp(target, -0.30, 0.30, 0);
-    const rt = 6.0*dt;
-    let cur = w.x3fFeed;
-    cur += sClamp(tgt - cur, -rt, rt, 0);
-    if (!isF(cur)) cur = 0;
-    w.x3fFeed = cur;
+    let ahead = gAhead;
+    if (podsCnt > 0 && isF(ahead)) ahead = ahead*0.6 + (podsSum/podsCnt)*0.4;
+    else if (podsCnt > 0) ahead = podsSum/podsCnt;
+    // quantidade de obstáculo = subida à frente relativa ao solo atual
+    let bump = 0;
+    if (isF(gNow) && isF(ahead)) bump = Math.max(0, ahead - gNow);   // subida à frente
+    // resposta: damping cresce com o obstáculo e com a velocidade
+    const spdF = sClamp(speed/10, 0.2, 1.5, 1);
+    const damperTgt = 1.0 + sClamp(bump*6.0, 0, 2.2) * spdF;         // 1.0 → 3.2
+    const preTgt = sClamp(bump*0.5, 0, CFG.maxComp*0.20, 0);         // máx 6% do curso
+    const rt = sClamp(dist/Math.max(speed, 1), 0.02, 0.25) * 6;
+    w.x3fDamper += (damperTgt - w.x3fDamper)*sClamp(rt*dt, 0, 1, 0);
+    w.x3fPre += (preTgt - w.x3fPre)*sClamp(rt*dt, 0, 1, 0);
+    if (!isF(w.x3fDamper)) w.x3fDamper = 1.0;
+    if (!isF(w.x3fPre)) w.x3fPre = 0;
+    // decaimento suave de volta ao neutro quando o obstáculo passa
+    if (!isF(ahead)){
+      w.x3fDamper += (1.0 - w.x3fDamper)*sClamp(2*dt, 0, 1, 0);
+      w.x3fPre += (0 - w.x3fPre)*sClamp(2*dt, 0, 1, 0);
+    }
   }
 }
 
@@ -2923,7 +2909,7 @@ function physicsStep(dt){
     if (n >= 12) x3fAcc = 0;
   } else {
     x3fAcc = 0;
-    for (const w of wheels){ w.macFeed = 0; w.x3fFeed = 0; }
+    for (const w of wheels){ w.macFeed = 0; w.x3fDamper = 1.0; w.x3fPre = 0; }
   }
 
   for (const w of wheels) suspension(w, dt);
@@ -3033,6 +3019,7 @@ function updateVisuals(dt){
     for (let sIdx=0; sIdx<Math.min(list.length,16); sIdx++){
       const n = list[sIdx];
       if (!n.dbg) n.dbg = { d:3.0, hit:false };
+      // pods ancorados: origem = posição LOCAL do pod transformada pelo chassi
       _v4.set(n.p[0], n.p[1], n.p[2]).applyQuaternion(carQ).add(carPos);
       if (n.t === 'cam'){
         _v5.copy(carFwd).multiplyScalar(0.85).addScaledVector(carUp, -1).normalize();
